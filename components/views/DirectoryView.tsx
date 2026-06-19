@@ -38,12 +38,12 @@ export function DirectoryView({ db, type, onOpenProfile, onAddEntry }: Props) {
               const pp = db.projects.filter(p => p.client_id === item.id)
               s1 = { v: pp.length, l: 'Projects' }
               s2 = { v: pp.filter(p => p.status === 'active').length, l: 'Active' }
-              s3 = { v: ('contacts' in item ? item.contacts?.length : 0) || 0, l: 'Contacts' }
+              s3 = { v: ('contacts' in item && Array.isArray((item as {contacts?: unknown[]}).contacts) ? (item as {contacts: unknown[]}).contacts.length : 0), l: 'Contacts' }
             } else if (type === 'contractor') {
               const tt = db.tasks.filter(t => (t.contractor_ids || []).includes(item.id))
               s1 = { v: tt.length, l: 'Tasks' }
               s2 = { v: tt.filter(t => t.status === 'active').length, l: 'Active' }
-              s3 = { v: ('contacts' in item ? item.contacts?.length : 0) || 0, l: 'Contacts' }
+              s3 = { v: ('contacts' in item && Array.isArray((item as {contacts?: unknown[]}).contacts) ? (item as {contacts: unknown[]}).contacts.length : 0), l: 'Contacts' }
             } else {
               const wpp = db.projects.filter(p => (p.worker_ids || []).includes(item.id))
               const wtt = db.tasks.filter(t => (t.worker_ids || []).includes(item.id))

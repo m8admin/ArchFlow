@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/Badge'
-import type { AppDB, DirType, Contact } from '@/lib/types'
+import type { AppDB, DirType, Contact, Project } from '@/lib/types'
 import { clientColor, workerColor, dlCls, fmtFull, initials, wkDays } from '@/lib/utils'
 
 interface Props {

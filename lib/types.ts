@@ -23,6 +23,8 @@ export interface Project {
   floors: number | null
   worker_ids: string[]
   contractor_ids: string[]
+  coordinator_id: string | null
+  coordinator_type: 'worker' | 'contractor' | null
 }
 
 export interface Task {

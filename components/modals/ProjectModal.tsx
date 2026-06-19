@@ -18,9 +18,7 @@ interface Props {
   toast: (msg: string) => void
 }
 
-function CheckChips({
-  label, items, selected, onChange,
-}: { label: string; items: { id: string; name: string }[]; selected: string[]; onChange: (ids: string[]) => void }) {
+function CheckChips({ label, items, selected, onChange }: { label: string; items: { id: string; name: string }[]; selected: string[]; onChange: (ids: string[]) => void }) {
   if (!items.length) return null
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id])
@@ -29,11 +27,7 @@ function CheckChips({
       <label>{label}</label>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
         {items.map(item => (
-          <span
-            key={item.id}
-            className={`cb-chip${selected.includes(item.id) ? ' sel' : ''}`}
-            onClick={() => toggle(item.id)}
-          >
+          <span key={item.id} className={`cb-chip${selected.includes(item.id) ? ' sel' : ''}`} onClick={() => toggle(item.id)}>
             {item.name}
           </span>
         ))}
@@ -56,6 +50,8 @@ export function ProjectModal({ open, project, clients, contractors, workers, onS
   const [notes, setNotes] = useState('')
   const [workerIds, setWorkerIds] = useState<string[]>([])
   const [contractorIds, setContractorIds] = useState<string[]>([])
+  const [coordinatorId, setCoordinatorId] = useState<string>('')
+  const [coordinatorType, setCoordinatorType] = useState<'worker' | 'contractor'>('worker')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -73,22 +69,21 @@ export function ProjectModal({ open, project, clients, contractors, workers, onS
       setNotes(project.notes || '')
       setWorkerIds(project.worker_ids || [])
       setContractorIds(project.contractor_ids || [])
+      setCoordinatorId(project.coordinator_id || '')
+      setCoordinatorType(project.coordinator_type || 'worker')
     } else {
       setName(''); setClientId(clients[0]?.id || ''); setNewClient('')
       setStartDate(todayStr()); setEndDate(dFrom(30))
       setStatus('planning'); setPct(0); setSqm(''); setFloors(''); setUses(''); setNotes('')
       setWorkerIds([]); setContractorIds([])
+      setCoordinatorId(''); setCoordinatorType('worker')
     }
   }, [project, open, clients])
 
   async function handleSave() {
     if (!name.trim()) { toast('Project name required.'); return }
     let cid = clientId
-    if (newClient.trim()) {
-      // new client will be created inline — caller must handle this
-      // For simplicity, pass a sentinel; AppShell handles it
-      cid = '__new:' + newClient.trim()
-    }
+    if (newClient.trim()) cid = '__new:' + newClient.trim()
     if (!cid) { toast('Client required.'); return }
     setSaving(true)
     await onSave({
@@ -100,6 +95,8 @@ export function ProjectModal({ open, project, clients, contractors, workers, onS
       floors: floors ? parseInt(floors) : null,
       uses: uses.trim(), notes: notes.trim(),
       worker_ids: workerIds, contractor_ids: contractorIds,
+      coordinator_id: coordinatorId || null,
+      coordinator_type: coordinatorId ? coordinatorType : null,
     })
     setSaving(false)
   }
@@ -110,6 +107,12 @@ export function ProjectModal({ open, project, clients, contractors, workers, onS
     await onDelete(project.id)
     onClose()
   }
+
+  // Combined list for coordinator picker, grouped by type
+  const coordinatorOptions = [
+    ...workers.map(w => ({ id: w.id, name: w.name, type: 'worker' as const, role: w.role })),
+    ...contractors.map(c => ({ id: c.id, name: c.name, type: 'contractor' as const, role: c.role })),
+  ]
 
   return (
     <Modal title={project ? 'Edit project' : 'New project'} open={open} onClose={onClose}>
@@ -126,10 +129,7 @@ export function ProjectModal({ open, project, clients, contractors, workers, onS
               <option value="__new">+ New client…</option>
             </select>
             {(clientId === '__new' || newClient) && (
-              <input
-                style={{ flex: 1 }} placeholder="New client name"
-                value={newClient} onChange={e => setNewClient(e.target.value)}
-              />
+              <input style={{ flex: 1 }} placeholder="New client name" value={newClient} onChange={e => setNewClient(e.target.value)} />
             )}
           </div>
         </div>
@@ -151,6 +151,7 @@ export function ProjectModal({ open, project, clients, contractors, workers, onS
           <label>Progress (%)</label>
           <input type="number" min={0} max={100} value={pct} onChange={e => setPct(parseInt(e.target.value) || 0)} />
         </div>
+
         <div className="sect-divider">Project Details</div>
         <div className="fr">
           <label>Typical sqm (m²)</label>
@@ -164,6 +165,32 @@ export function ProjectModal({ open, project, clients, contractors, workers, onS
           <label>Uses in project</label>
           <input value={uses} onChange={e => setUses(e.target.value)} placeholder="e.g. Residential, Commercial" />
         </div>
+
+        {/* Coordinator */}
+        <div className="fr ff">
+          <label>Project coordinator</label>
+          <select
+            value={coordinatorId ? `${coordinatorType}:${coordinatorId}` : ''}
+            onChange={e => {
+              const val = e.target.value
+              if (!val) { setCoordinatorId(''); return }
+              const [type, id] = val.split(':')
+              setCoordinatorType(type as 'worker' | 'contractor')
+              setCoordinatorId(id)
+            }}
+          >
+            <option value="">— None —</option>
+            {workers.length > 0 && <option disabled>── Workers ──</option>}
+            {workers.map(w => (
+              <option key={w.id} value={`worker:${w.id}`}>{w.name}{w.role ? ` (${w.role})` : ''}</option>
+            ))}
+            {contractors.length > 0 && <option disabled>── Subcontractors ──</option>}
+            {contractors.map(c => (
+              <option key={c.id} value={`contractor:${c.id}`}>{c.name}{c.role ? ` (${c.role})` : ''}</option>
+            ))}
+          </select>
+        </div>
+
         <CheckChips label="Assign workers" items={workers} selected={workerIds} onChange={setWorkerIds} />
         <CheckChips label="Assign subcontractors" items={contractors} selected={contractorIds} onChange={setContractorIds} />
         <div className="fr ff">

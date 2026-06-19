@@ -121,6 +121,7 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
             <tr>
               <th style={{ minWidth: 185 }}>Project / Task</th>
               <th>Client</th><th>sqm</th><th>Use</th><th>Floors</th>
+              <th>Coordinator</th>
               <th style={{ minWidth: 160 }}>Assigned</th>
               <th>Start</th><th>Deadline</th><th>Status</th>
               <th style={{ minWidth: 90 }}>Progress</th><th>%</th>
@@ -129,7 +130,7 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
           </thead>
           <tbody>
             {!projects.length ? (
-              <tr className="er"><td colSpan={12}>No projects match — <button className="btn bsm" onClick={() => { setFilterClient(''); setFilterStatus('') }}>Clear filters</button></td></tr>
+              <tr className="er"><td colSpan={13}>No projects match — <button className="btn bsm" onClick={() => { setFilterClient(''); setFilterStatus('') }}>Clear filters</button></td></tr>
             ) : projects.map(p => {
               const col = clientColor(db.clients, p.client_id)
               const isCol = !!collapsed[p.id]
@@ -148,6 +149,18 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
                   <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{p.sqm ? `${p.sqm.toLocaleString()} m²` : '—'}</td>
                   <td style={{ fontSize: 12, color: 'var(--tx2)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.uses || '—'}</td>
                   <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{p.floors || '—'}</td>
+                  <td style={{ fontSize: 12 }}>{
+                    p.coordinator_id
+                      ? (() => {
+                          const person = p.coordinator_type === 'worker'
+                            ? db.workers.find(w => w.id === p.coordinator_id)
+                            : db.contractors.find(c => c.id === p.coordinator_id)
+                          return person
+                            ? <span className="tag" style={{ fontSize: 11 }}>👤 {person.name}</span>
+                            : <span style={{ color: 'var(--tx3)' }}>—</span>
+                        })()
+                      : <span style={{ color: 'var(--tx3)' }}>—</span>
+                  }</td>
                   <td style={{ maxWidth: 180 }}><AssignCell wids={p.worker_ids || []} cids={p.contractor_ids || []} /></td>
                   <td style={{ fontSize: 12 }}>{fmtFull(p.start_date)}</td>
                   <td style={{ fontSize: 12 }} className={dc}>{fmtFull(p.end_date)}</td>
@@ -158,14 +171,14 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
                 </tr>,
                 ...(!isCol ? (
                   tasks.length === 0
-                    ? [<tr key={`${p.id}-empty`} className="tk"><td className="ind" colSpan={12} style={{ color: 'var(--tx3)', fontSize: 12 }}>No tasks — <button className="btn bsm" onClick={() => onNewTask(p.id)}>+ Add task</button></td></tr>]
+                    ? [<tr key={`${p.id}-empty`} className="tk"><td className="ind" colSpan={13} style={{ color: 'var(--tx3)', fontSize: 12 }}>No tasks — <button className="btn bsm" onClick={() => onNewTask(p.id)}>+ Add task</button></td></tr>]
                     : tasks.map(t => {
                       const tdc = dlCls(t.end_date)
                       return (
                         <tr key={t.id} className="tk">
                           <td className="ind">↪ {t.name}</td>
                           <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{clientName(p.client_id)}</td>
-                          <td colSpan={3}></td>
+                          <td colSpan={4}></td>
                           <td style={{ maxWidth: 180 }}><AssignCell wids={t.worker_ids || []} cids={t.contractor_ids || []} /></td>
                           <td style={{ fontSize: 12 }}>{fmtFull(t.start_date)}</td>
                           <td style={{ fontSize: 12 }} className={tdc}>{fmtFull(t.end_date)}</td>

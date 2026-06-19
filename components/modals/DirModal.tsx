@@ -62,15 +62,17 @@ export function DirModal({ open, type, item, onSave, onDelete, onClose, toast }:
   async function handleSave() {
     if (!name.trim()) { toast('Name is required.'); return }
     setSaving(true)
-    const contacts = (item as Client | Contractor)?.contacts || []
-    await onSave({
+    const payload: Record<string, unknown> = {
       ...(item || {}),
       id: item?.id,
       name: name.trim(), role: role.trim(),
       email: email.filter(Boolean), phone: phone.filter(Boolean),
       notes: notes.trim(),
-      contacts,
-    } as DirItem & { id?: string })
+    }
+    if (type !== 'worker') {
+      payload.contacts = (item as Client | Contractor)?.contacts || []
+    }
+    await onSave(payload as DirItem & { id?: string })
     setSaving(false)
   }
 

@@ -254,7 +254,7 @@ function WorkerProfile({ db, id, onEditProject }: { db: AppDB; id: string; onEdi
   )
 }
 
-function ContactsSection({ contacts, onAdd, onEdit, onDelete, projects }: { contacts: Contact[]; onAdd: () => void; onEdit: (ct: Contact) => void; onDelete: (id: string) => void; projects: typeof db.projects; db?: AppDB }) {
+function ContactsSection({ contacts, onAdd, onEdit, onDelete, projects }: { contacts: Contact[]; onAdd: () => void; onEdit: (ct: Contact) => void; onDelete: (id: string) => void; projects: Project[] }) {
   return (
     <div>
       <div className="sec-t">

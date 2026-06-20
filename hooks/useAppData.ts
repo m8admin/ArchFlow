@@ -58,11 +58,13 @@ export function useAppData() {
   async function saveTask(data: Omit<Task, 'id'> & { id?: string }) {
     if (data.id) {
       const { id, ...rest } = data
-      await supabase.from('tasks').update(rest).eq('id', id)
+      const { error } = await supabase.from('tasks').update(rest).eq('id', id)
+      if (error) console.error('saveTask update error:', error)
     } else {
       const { id: _id, ...rest } = data as Task
       void _id
-      await supabase.from('tasks').insert(rest)
+      const { error } = await supabase.from('tasks').insert(rest)
+      if (error) console.error('saveTask insert error:', error)
     }
     await fetchAll()
   }

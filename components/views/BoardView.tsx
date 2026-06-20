@@ -28,7 +28,7 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
 
   const projectsWithAgg = db.projects.map(p => {
     const allProjectTasks = db.tasks.filter(t => t.project_id === p.id)
-    const milestones = allProjectTasks.filter(t => t.kind === 'milestone')
+    const milestones = allProjectTasks.filter(t => (t.kind || 'milestone') === 'milestone' && !t.parent_milestone_id)
     const projectTasks = allProjectTasks.filter(t => t.kind === 'task' && !t.parent_milestone_id)
     const agg = projectAggregates(allProjectTasks)
     return { ...p, ...agg, milestones, projectTasks }

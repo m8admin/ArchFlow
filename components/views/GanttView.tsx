@@ -27,9 +27,18 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
 
   const projectsRaw = db.projects.filter(p => !filterClient || p.client_id === filterClient)
   const projects = projectsRaw.map(p => {
-    const milestones = db.tasks.filter(t => t.project_id === p.id)
-    const agg = projectAggregates(milestones)
-    return { ...p, start_date: agg.start, end_date: agg.end, status: agg.status, pct: agg.pct, milestones }
+    const allTasks = db.tasks.filter(t => t.project_id === p.id)
+    const milestones = allTasks.filter(t => (t.kind || 'milestone') === 'milestone' && !t.parent_milestone_id)
+    const projectTasks = allTasks.filter(t => t.kind === 'task' && !t.parent_milestone_id)
+    const agg = projectAggregates(allTasks)
+    // fallback: if no milestones, compute range from all tasks
+    let start = agg.start, end = agg.end
+    if (!start && allTasks.length) {
+      const starts = allTasks.map(t => t.start_date).sort()
+      const ends = allTasks.map(t => t.end_date).sort()
+      start = starts[0]; end = ends[ends.length - 1]
+    }
+    return { ...p, start_date: start, end_date: end, status: agg.status, pct: agg.pct, milestones, projectTasks }
   }).filter(p => p.start_date && p.end_date)
   const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0)
   const T = fmt(todayDate)
@@ -206,7 +215,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                   ]
                 }),
                 // Project-level tasks
-                ...db.tasks.filter(t => t.project_id === p.id && t.kind === 'task' && !t.parent_milestone_id).map(st => {
+                ...p.projectTasks.map(st => {
                   const stL = pct(st.start_date); const stW = bw(st.start_date, st.end_date); const stBC = BAR_COL[st.status]
                   return (
                     <div key={st.id} className="grow">

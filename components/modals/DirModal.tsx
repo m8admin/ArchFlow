@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import type { Client, Contractor, Worker, DirType } from '@/lib/types'
+import { CLIENT_COLORS } from '@/lib/utils'
 
 type DirItem = Client | Contractor | Worker
 
@@ -37,6 +38,12 @@ function MultiInput({ label, values, onChange }: { label: string; values: string
   )
 }
 
+const PRESET_COLORS = [
+  ...CLIENT_COLORS,
+  '#E91E63', '#00BCD4', '#FF9800', '#4CAF50', '#9C27B0',
+  '#3F51B5', '#009688', '#FF5722', '#607D8B', '#795548',
+]
+
 const TITLES: Record<DirType, string> = { client: 'Client', contractor: 'Subcontractor', worker: 'Worker' }
 const ROLE_PH: Record<DirType, string> = { client: 'e.g. Developer', contractor: 'e.g. 3D Visualisation', worker: 'e.g. Senior Architect' }
 
@@ -46,6 +53,7 @@ export function DirModal({ open, type, item, onSave, onDelete, onClose, toast }:
   const [email, setEmail] = useState<string[]>([''])
   const [phone, setPhone] = useState<string[]>([''])
   const [notes, setNotes] = useState('')
+  const [color, setColor] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -54,8 +62,9 @@ export function DirModal({ open, type, item, onSave, onDelete, onClose, toast }:
       setEmail((item.email || []).length ? item.email : [''])
       setPhone((item.phone || []).length ? item.phone : [''])
       setNotes(item.notes || '')
+      setColor((item as Client).color || '')
     } else {
-      setName(''); setRole(''); setEmail(['']); setPhone(['']); setNotes('')
+      setName(''); setRole(''); setEmail(['']); setPhone(['']); setNotes(''); setColor('')
     }
   }, [item, open])
 
@@ -69,8 +78,11 @@ export function DirModal({ open, type, item, onSave, onDelete, onClose, toast }:
       email: email.filter(Boolean), phone: phone.filter(Boolean),
       notes: notes.trim(),
     }
-    if (type !== 'worker') {
-      payload.contacts = (item as Client | Contractor)?.contacts || []
+    if (type === 'client') {
+      payload.color = color || null
+      payload.contacts = (item as Client)?.contacts || []
+    } else if (type === 'contractor') {
+      payload.contacts = (item as Contractor)?.contacts || []
     }
     await onSave(payload as DirItem & { id?: string })
     setSaving(false)
@@ -96,6 +108,37 @@ export function DirModal({ open, type, item, onSave, onDelete, onClose, toast }:
           <label>Role / Title</label>
           <input value={role} onChange={e => setRole(e.target.value)} placeholder={ROLE_PH[type]} />
         </div>
+
+        {/* Color picker - clients only */}
+        {type === 'client' && (
+          <div className="fr ff">
+            <label>Color</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {PRESET_COLORS.map(c => (
+                <span
+                  key={c}
+                  onClick={() => setColor(c)}
+                  style={{
+                    width: 28, height: 28, borderRadius: '50%', background: c, cursor: 'pointer',
+                    border: color === c ? '3px solid var(--tx)' : '2px solid transparent',
+                    boxShadow: color === c ? '0 0 0 2px var(--sf)' : 'none',
+                  }}
+                />
+              ))}
+              <input
+                type="color"
+                value={color || '#2B6BE8'}
+                onChange={e => setColor(e.target.value)}
+                style={{ width: 28, height: 28, padding: 0, border: 'none', borderRadius: '50%', cursor: 'pointer' }}
+                title="Custom color"
+              />
+              {color && (
+                <button className="btn bxs" onClick={() => setColor('')} style={{ fontSize: 11 }}>Clear</button>
+              )}
+            </div>
+          </div>
+        )}
+
         <MultiInput label="Email" values={email} onChange={setEmail} />
         <MultiInput label="Phone" values={phone} onChange={setPhone} />
         <div className="fr ff">

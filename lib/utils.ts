@@ -61,7 +61,9 @@ export function dlCls(e: string): string {
   return diff < 0 ? 'overdue' : diff < 7 ? 'due-soon' : ''
 }
 
-export function clientColor(clients: { id: string }[], cid: string): string {
+export function clientColor(clients: { id: string; color?: string | null }[], cid: string): string {
+  const client = clients.find(c => c.id === cid)
+  if (client?.color) return client.color
   const i = clients.findIndex(c => c.id === cid)
   return CLIENT_COLORS[i >= 0 ? i % CLIENT_COLORS.length : 0] || '#888'
 }

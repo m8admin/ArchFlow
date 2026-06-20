@@ -40,6 +40,7 @@ export interface Client {
   id: string
   name: string
   role: string
+  color: string | null
   email: string[]
   phone: string[]
   notes: string

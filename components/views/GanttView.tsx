@@ -49,7 +49,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
     const s = pd(p.start_date), e = pd(p.end_date)
     if (s < minD) minD = s
     if (e > maxD) maxD = e
-    p.milestones.forEach(t => {
+    db.tasks.filter(t => t.project_id === p.id).forEach(t => {
       const ts = pd(t.start_date), te = pd(t.end_date)
       if (ts < minD) minD = ts
       if (te > maxD) maxD = te
@@ -167,22 +167,65 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                   </div>
                 </div>
               </div>,
-              ...(!isCol ? p.milestones.map(t => {
-                const tL2 = pct(t.start_date); const tW = bw(t.start_date, t.end_date); const tBC = BAR_COL[t.status]
-                return (
-                  <div key={t.id} className="grow">
-                    <div className="glc g-tl">↪ {t.name}</div>
-                    <div className="gbc">
-                      <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .2, left: `${tL}%`, pointerEvents: 'none' }} />
-                      <div style={{ position: 'relative', width: '100%', height: 15 }}>
-                        <div style={{ position: 'absolute', left: `${tL2}%`, width: `${tW}%`, height: 15, background: tBC, borderRadius: 4, opacity: .85, cursor: 'pointer', minWidth: 4, overflow: 'hidden' }} onClick={() => onEditTask(t.id)}>
-                          <div style={{ height: '100%', width: `${t.pct}%`, background: 'rgba(255,255,255,.3)', borderRadius: '4px 0 0 4px' }} />
+              ...(!isCol ? [
+                // Milestones with their subtasks
+                ...p.milestones.flatMap(m => {
+                  const mL = pct(m.start_date); const mW = bw(m.start_date, m.end_date); const mBC = BAR_COL[m.status]
+                  const subtasks = db.tasks.filter(t => t.parent_milestone_id === m.id && t.kind === 'task')
+                  return [
+                    <div key={m.id} className="grow">
+                      <div className="glc g-tl" style={{ fontWeight: 600 }}>↪ {m.name}</div>
+                      <div className="gbc">
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .2, left: `${tL}%`, pointerEvents: 'none' }} />
+                        <div style={{ position: 'relative', width: '100%', height: 15 }}>
+                          <div style={{ position: 'absolute', left: `${mL}%`, width: `${mW}%`, height: 15, background: mBC, borderRadius: 4, opacity: .85, cursor: 'pointer', minWidth: 4, overflow: 'hidden' }} onClick={() => onEditTask(m.id)}>
+                            <div style={{ height: '100%', width: `${m.pct}%`, background: 'rgba(255,255,255,.3)', borderRadius: '4px 0 0 4px' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>,
+                    ...subtasks.map(st => {
+                      const stL = pct(st.start_date); const stW = bw(st.start_date, st.end_date); const stBC = BAR_COL[st.status]
+                      return (
+                        <div key={st.id} className="grow">
+                          <div className="glc g-tl" style={{ paddingLeft: 44, fontSize: 11, color: 'var(--tx3)' }}>
+                            <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--bl-tx)', background: 'var(--bl-bg)', padding: '0 4px', borderRadius: 6, marginRight: 4 }}>T</span>
+                            {st.name}
+                          </div>
+                          <div className="gbc">
+                            <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .15, left: `${tL}%`, pointerEvents: 'none' }} />
+                            <div style={{ position: 'relative', width: '100%', height: 10 }}>
+                              <div style={{ position: 'absolute', left: `${stL}%`, width: `${stW}%`, height: 10, background: stBC, borderRadius: 3, opacity: .7, cursor: 'pointer', minWidth: 3, overflow: 'hidden' }} onClick={() => onEditTask(st.id)}>
+                                <div style={{ height: '100%', width: `${st.pct}%`, background: 'rgba(255,255,255,.3)', borderRadius: '3px 0 0 3px' }} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }),
+                  ]
+                }),
+                // Project-level tasks
+                ...db.tasks.filter(t => t.project_id === p.id && t.kind === 'task' && !t.parent_milestone_id).map(st => {
+                  const stL = pct(st.start_date); const stW = bw(st.start_date, st.end_date); const stBC = BAR_COL[st.status]
+                  return (
+                    <div key={st.id} className="grow">
+                      <div className="glc g-tl" style={{ fontSize: 11, color: 'var(--tx3)' }}>
+                        <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--bl-tx)', background: 'var(--bl-bg)', padding: '0 4px', borderRadius: 6, marginRight: 4 }}>T</span>
+                        {st.name}
+                      </div>
+                      <div className="gbc">
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .15, left: `${tL}%`, pointerEvents: 'none' }} />
+                        <div style={{ position: 'relative', width: '100%', height: 10 }}>
+                          <div style={{ position: 'absolute', left: `${stL}%`, width: `${stW}%`, height: 10, background: stBC, borderRadius: 3, opacity: .7, cursor: 'pointer', minWidth: 3, overflow: 'hidden' }} onClick={() => onEditTask(st.id)}>
+                            <div style={{ height: '100%', width: `${st.pct}%`, background: 'rgba(255,255,255,.3)', borderRadius: '3px 0 0 3px' }} />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )
-              }) : [])
+                  )
+                }),
+              ] : [])
             ]
           })}
         </div>

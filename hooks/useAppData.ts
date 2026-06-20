@@ -33,14 +33,24 @@ export function useAppData() {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   async function saveProject(data: Omit<Project, 'id'> & { id?: string }) {
+    const payload = {
+      name: data.name,
+      client_id: data.client_id,
+      notes: data.notes,
+      sqm: data.sqm,
+      uses: data.uses,
+      floors: data.floors,
+      buildings: data.buildings,
+      developer: data.developer,
+      architect: data.architect,
+      bim_manager: data.bim_manager,
+      revit_version: data.revit_version,
+    }
     if (data.id) {
-      const { id, ...rest } = data
-      const { error } = await supabase.from('projects').update(rest).eq('id', id)
+      const { error } = await supabase.from('projects').update(payload).eq('id', data.id)
       if (error) console.error('saveProject update error:', error)
     } else {
-      const { id: _id, ...rest } = data as Project
-      void _id
-      const { error } = await supabase.from('projects').insert(rest)
+      const { error } = await supabase.from('projects').insert(payload)
       if (error) console.error('saveProject insert error:', error)
     }
     await fetchAll()

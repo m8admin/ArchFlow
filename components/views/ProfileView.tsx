@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/Badge'
 import type { AppDB, DirType, Contact, Project } from '@/lib/types'
-import { clientColor, workerColor, dlCls, fmtFull, initials, wkDays } from '@/lib/utils'
+import { clientColor, workerColor, dlCls, fmtFull, initials, wkDays, projectAggregates } from '@/lib/utils'
 
 interface Props {
   db: AppDB
@@ -66,7 +66,11 @@ export function ProfileView({ db, type, id, onBack, onEdit, onDelete, onEditProj
 }
 
 function ClientProfile({ db, id, onEditProject, item, onAddContact, onEditContact, onDeleteContact }: { db: AppDB; id: string; onEditProject: (id: string) => void; item: typeof db.clients[0]; onAddContact: () => void; onEditContact: (ct: Contact) => void; onDeleteContact: (id: string) => void }) {
-  const pp = db.projects.filter(p => p.client_id === id)
+  const pp = db.projects.filter(p => p.client_id === id).map(p => {
+    const milestones = db.tasks.filter(t => t.project_id === p.id)
+    const agg = projectAggregates(milestones)
+    return { ...p, ...agg }
+  })
   const tt = pp.flatMap(p => db.tasks.filter(t => t.project_id === p.id))
   const active = pp.filter(p => p.status === 'active').length
   const delayed = pp.filter(p => p.status === 'delayed').length
@@ -74,7 +78,7 @@ function ClientProfile({ db, id, onEditProject, item, onAddContact, onEditContac
   const avg = pp.length ? Math.round(pp.reduce((a, p) => a + p.pct, 0) / pp.length) : 0
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const ds = tt.filter(t => { const ms = new Date(t.end_date).getTime() - today.getTime(); return ms >= 0 && ms < 7 * 86400000 && t.status !== 'done' }).length
-  const totalWD = pp.reduce((a, p) => a + wkDays(p.start_date, p.end_date), 0)
+  const totalWD = pp.filter(p => p.start && p.end).reduce((a, p) => a + wkDays(p.start, p.end), 0)
   const sqmP = pp.filter(p => (p.sqm || 0) > 0)
   const avgSqm = sqmP.length ? Math.round(sqmP.reduce((a, p) => a + (p.sqm || 0), 0) / sqmP.length) : 0
   return (
@@ -99,14 +103,14 @@ function ClientProfile({ db, id, onEditProject, item, onAddContact, onEditContac
           <div className="tw" style={{ marginBottom: 14 }}>
             <table><thead><tr><th>Project</th><th>Use</th><th>sqm</th><th>Floors</th><th>Start</th><th>Deadline</th><th>Status</th><th>Progress</th><th>%</th><th></th></tr></thead>
               <tbody>
-                {pp.map(p => { const dc = dlCls(p.end_date); return (
+                {pp.map(p => { const dc = p.end ? dlCls(p.end) : ''; return (
                   <tr key={p.id} className="pr">
                     <td><span className="pnc" onClick={() => onEditProject(p.id)}>{p.name}</span></td>
                     <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{p.uses || '—'}</td>
                     <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{p.sqm ? `${p.sqm.toLocaleString()} m²` : '—'}</td>
                     <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{p.floors || '—'}</td>
-                    <td style={{ fontSize: 12 }}>{fmtFull(p.start_date)}</td>
-                    <td style={{ fontSize: 12 }} className={dc}>{fmtFull(p.end_date)}</td>
+                    <td style={{ fontSize: 12 }}>{p.start ? fmtFull(p.start) : '—'}</td>
+                    <td style={{ fontSize: 12 }} className={dc}>{p.end ? fmtFull(p.end) : '—'}</td>
                     <td><Badge status={p.status} /></td>
                     <td><ProgressBar status={p.status} pct={p.pct} /></td>
                     <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{p.pct}%</td>
@@ -131,7 +135,8 @@ function ContractorProfile({ db, id, item, onAddContact, onEditContact, onDelete
   const cdl = ctt.filter(t => t.status === 'delayed').length
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const cds = ctt.filter(t => { const ms = new Date(t.end_date).getTime() - today.getTime(); return ms >= 0 && ms < 7 * 86400000 && t.status !== 'done' }).length
-  const ctWD = cprojs.reduce((a, p) => a + (p ? wkDays(p.start_date, p.end_date) : 0), 0)
+  const cprojsAgg = cprojs.map(p => { const agg = projectAggregates(db.tasks.filter(t => t.project_id === p.id)); return { ...p, ...agg } })
+  const ctWD = cprojsAgg.filter(p => p.start && p.end).reduce((a, p) => a + wkDays(p.start, p.end), 0)
   return (
     <>
       <div className="pg">
@@ -208,13 +213,13 @@ function WorkerProfile({ db, id, onEditProject }: { db: AppDB; id: string; onEdi
           <div className="tw" style={{ marginBottom: 14 }}>
             <table><thead><tr><th>Project</th><th>Client</th><th>Deadline</th><th>Status</th><th>Progress</th></tr></thead>
               <tbody>
-                {wpp.map(p => { const col = clientColor(db.clients, p.client_id); const dc = dlCls(p.end_date); const cn = db.clients.find(c => c.id === p.client_id)?.name || '?'; return (
+                {wpp.map(p => { const agg = projectAggregates(db.tasks.filter(t => t.project_id === p.id)); const col = clientColor(db.clients, p.client_id); const dc = agg.end ? dlCls(agg.end) : ''; const cn = db.clients.find(c => c.id === p.client_id)?.name || '?'; return (
                   <tr key={p.id} className="pr">
                     <td><span className="pnc" onClick={() => onEditProject(p.id)}>{p.name}</span></td>
                     <td style={{ color: col, fontWeight: 500 }}>{cn}</td>
-                    <td style={{ fontSize: 12 }} className={dc}>{fmtFull(p.end_date)}</td>
-                    <td><Badge status={p.status} /></td>
-                    <td style={{ minWidth: 90 }}><ProgressBar status={p.status} pct={p.pct} /></td>
+                    <td style={{ fontSize: 12 }} className={dc}>{agg.end ? fmtFull(agg.end) : '—'}</td>
+                    <td><Badge status={agg.status} /></td>
+                    <td style={{ minWidth: 90 }}><ProgressBar status={agg.status} pct={agg.pct} /></td>
                   </tr>
                 )})}
               </tbody>

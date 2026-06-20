@@ -1,6 +1,6 @@
 import type { AppDB } from './types'
 import { STATUS_META } from './types'
-import { wkDays, todayStr, clientColor } from './utils'
+import { wkDays, todayStr, clientColor, projectAggregates } from './utils'
 
 declare global {
   interface Window { XLSX: typeof import('xlsx') }
@@ -27,7 +27,8 @@ function coordName(db: AppDB, id: string | null, type: string | null) {
 export function doCSV(db: AppDB) {
   const rows: string[][] = [['Type','Project','Client','sqm','Uses','Floors','Milestone','Coordinator','Modellers','Start','Deadline','Status','Progress%','Notes']]
   db.projects.forEach(p => {
-    rows.push(['Project', p.name, clientName(db, p.client_id), String(p.sqm || ''), p.uses || '', String(p.floors || ''), '', '', '', p.start_date, p.end_date, p.status, String(p.pct), p.notes || ''])
+    const agg = projectAggregates(db.tasks.filter(t => t.project_id === p.id))
+    rows.push(['Project', p.name, clientName(db, p.client_id), String(p.sqm || ''), p.uses || '', String(p.floors || ''), '', '', '', agg.start || '', agg.end || '', agg.status, String(agg.pct), p.notes || ''])
     db.tasks.filter(t => t.project_id === p.id).forEach(t => {
       const modellers = [...workerNames(db, t.modeller_worker_ids || []).split('; '), ...contractorNames(db, t.modeller_contractor_ids || []).split('; ')].filter(Boolean).join('; ')
       rows.push(['Milestone', p.name, clientName(db, p.client_id), '', '', '', t.name, coordName(db, t.coordinator_id, t.coordinator_type), modellers, t.start_date, t.end_date, t.status, String(t.pct), t.notes || ''])
@@ -46,7 +47,7 @@ export function doExcel(db: AppDB) {
   const wb = X.utils.book_new()
 
   const pr = [['Project','Client','sqm','Uses','Floors','Start','Deadline','Status','Progress%','Notes']]
-  db.projects.forEach(p => pr.push([p.name, clientName(db, p.client_id), String(p.sqm || ''), p.uses || '', String(p.floors || ''), p.start_date, p.end_date, STATUS_META[p.status]?.label || p.status, String(p.pct), p.notes || '']))
+  db.projects.forEach(p => { const agg = projectAggregates(db.tasks.filter(t => t.project_id === p.id)); pr.push([p.name, clientName(db, p.client_id), String(p.sqm || ''), p.uses || '', String(p.floors || ''), agg.start || '', agg.end || '', STATUS_META[agg.status]?.label || agg.status, String(agg.pct), p.notes || '']) })
   const ws1 = X.utils.aoa_to_sheet(pr)
   ws1['!cols'] = Array(10).fill({ wch: 20 })
   X.utils.book_append_sheet(wb, ws1, 'Projects')
@@ -79,8 +80,9 @@ export function doPrint(db: AppDB) {
   const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
   const rows = db.projects.map(p => {
     const col = clientColor(db.clients, p.client_id)
-    const s = sm[p.status] || { label: p.status, col: '#888', bg: '#eee' }
-    let html = `<tr style="background:#fff"><td style="padding:6px 9px;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:5px;vertical-align:middle"></span>${p.name}</td><td style="padding:6px 9px;color:${col};font-weight:600">${clientName(db, p.client_id)}</td><td style="padding:6px 9px;font-size:12px">${p.sqm ? p.sqm.toLocaleString() : ''}</td><td style="padding:6px 9px;font-size:12px">${p.uses || ''}</td><td style="padding:6px 9px;font-size:12px">${p.floors || ''}</td><td colspan="2"></td><td style="padding:6px 9px;font-size:12px">${p.start_date}</td><td style="padding:6px 9px;font-size:12px">${p.end_date}</td><td style="padding:6px 9px"><span style="background:${s.bg};color:${s.col};padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700">${s.label}</span></td><td style="padding:6px 9px"><div style="background:#eee;height:8px;border-radius:20px;overflow:hidden;min-width:60px"><div style="background:${s.col};height:100%;width:${p.pct}%;border-radius:20px"></div></div></td><td style="padding:6px 9px;font-size:12px">${p.pct}%</td></tr>`
+    const agg = projectAggregates(db.tasks.filter(t => t.project_id === p.id))
+    const s = sm[agg.status] || { label: agg.status, col: '#888', bg: '#eee' }
+    let html = `<tr style="background:#fff"><td style="padding:6px 9px;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:5px;vertical-align:middle"></span>${p.name}</td><td style="padding:6px 9px;color:${col};font-weight:600">${clientName(db, p.client_id)}</td><td style="padding:6px 9px;font-size:12px">${p.sqm ? p.sqm.toLocaleString() : ''}</td><td style="padding:6px 9px;font-size:12px">${p.uses || ''}</td><td style="padding:6px 9px;font-size:12px">${p.floors || ''}</td><td colspan="2"></td><td style="padding:6px 9px;font-size:12px">${agg.start || ''}</td><td style="padding:6px 9px;font-size:12px">${agg.end || ''}</td><td style="padding:6px 9px"><span style="background:${s.bg};color:${s.col};padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700">${s.label}</span></td><td style="padding:6px 9px"><div style="background:#eee;height:8px;border-radius:20px;overflow:hidden;min-width:60px"><div style="background:${s.col};height:100%;width:${agg.pct}%;border-radius:20px"></div></div></td><td style="padding:6px 9px;font-size:12px">${agg.pct}%</td></tr>`
     db.tasks.filter(t => t.project_id === p.id).forEach(t => {
       const ts = sm[t.status] || { label: t.status, col: '#888', bg: '#eee' }
       const coord = coordName(db, t.coordinator_id, t.coordinator_type)
@@ -91,13 +93,14 @@ export function doPrint(db: AppDB) {
   }).join('')
 
   const pp = db.projects
-  const totalWD = pp.reduce((a, p) => a + wkDays(p.start_date, p.end_date), 0)
+  const ppAgg = pp.map(p => projectAggregates(db.tasks.filter(t => t.project_id === p.id)))
+  const totalWD = ppAgg.filter(a => a.start && a.end).reduce((a, p) => a + wkDays(p.start, p.end), 0)
   const sqmPP = pp.filter(p => (p.sqm || 0) > 0)
   const avgSqm = sqmPP.length ? Math.round(sqmPP.reduce((a, p) => a + (p.sqm || 0), 0) / sqmPP.length) : 0
   const stats = [
     { l: 'Projects', v: pp.length, c: '' },
-    { l: 'Active', v: pp.filter(x => x.status === 'active').length, c: '#2B6BE8' },
-    { l: 'Delayed', v: pp.filter(x => x.status === 'delayed').length, c: '#B83232' },
+    { l: 'Active', v: ppAgg.filter(x => x.status === 'active').length, c: '#2B6BE8' },
+    { l: 'Delayed', v: ppAgg.filter(x => x.status === 'delayed').length, c: '#B83232' },
     { l: 'Total Working Days', v: totalWD.toLocaleString(), c: '' },
     { l: 'Avg Typical SQM', v: avgSqm ? `${avgSqm.toLocaleString()} m²` : '--', c: '' },
   ]

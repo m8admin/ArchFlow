@@ -70,3 +70,18 @@ export function workerColor(workers: { id: string }[], wid: string): string {
   const i = workers.findIndex(w => w.id === wid)
   return WORKER_COLORS[i >= 0 ? i % WORKER_COLORS.length : 0] || '#888'
 }
+
+import type { Task, Status } from './types'
+
+export function projectAggregates(milestones: Task[]): { start: string; end: string; status: Status; pct: number } {
+  if (!milestones.length) return { start: '', end: '', status: 'planning', pct: 0 }
+  const starts = milestones.map(m => m.start_date).sort()
+  const ends = milestones.map(m => m.end_date).sort()
+  const pct = Math.round(milestones.reduce((a, m) => a + m.pct, 0) / milestones.length)
+  let status: Status = 'planning'
+  if (milestones.every(m => m.status === 'done')) status = 'done'
+  else if (milestones.some(m => m.status === 'delayed')) status = 'delayed'
+  else if (milestones.some(m => m.status === 'active')) status = 'active'
+  else if (milestones.some(m => m.status === 'review')) status = 'review'
+  return { start: starts[0], end: ends[ends.length - 1], status, pct }
+}

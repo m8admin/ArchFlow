@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { AppDB, ZoomLevel, Status } from '@/lib/types'
 import { STATUS_META } from '@/lib/types'
-import { clientColor, fmt, pd, ddiff, wkn } from '@/lib/utils'
+import { clientColor, fmt, pd, ddiff, wkn, projectAggregates } from '@/lib/utils'
 
 const BAR_COL: Record<Status, string> = {
   planning: '#7C6FF7', active: '#2B6BE8', review: '#D4900A', done: '#1A7A4A', delayed: '#B83232',
@@ -25,7 +25,12 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
 
-  const projects = db.projects.filter(p => !filterClient || p.client_id === filterClient)
+  const projectsRaw = db.projects.filter(p => !filterClient || p.client_id === filterClient)
+  const projects = projectsRaw.map(p => {
+    const milestones = db.tasks.filter(t => t.project_id === p.id)
+    const agg = projectAggregates(milestones)
+    return { ...p, start_date: agg.start, end_date: agg.end, status: agg.status, pct: agg.pct, milestones }
+  }).filter(p => p.start_date && p.end_date)
   const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0)
   const T = fmt(todayDate)
 
@@ -35,7 +40,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
         <ZoomBar zoom={zoom} setZoom={setZoom} />
         <div className="tb-r"><button className="btn bp bsm" onClick={onNewProject}>+ New project</button></div>
       </div>
-      <div className="ems">No projects to show.</div>
+      <div className="ems">No projects with milestones to show.</div>
     </div>
   )
 
@@ -44,7 +49,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
     const s = pd(p.start_date), e = pd(p.end_date)
     if (s < minD) minD = s
     if (e > maxD) maxD = e
-    db.tasks.filter(t => t.project_id === p.id).forEach(t => {
+    p.milestones.forEach(t => {
       const ts = pd(t.start_date), te = pd(t.end_date)
       if (ts < minD) minD = ts
       if (te > maxD) maxD = te
@@ -106,7 +111,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
         <div className="gi">
           {/* Header row */}
           <div className="grow" style={{ background: 'var(--sf2)' }}>
-            <div className="glc hdr">Project / Task</div>
+            <div className="glc hdr">Project / Milestone</div>
             <div className="g-hdr-ticks">
               {bands.map((b, i) => (
                 <div key={i} style={{ position: 'absolute', left: `${b.left}%`, width: `${b.width}%`, top: 0, bottom: 0, background: b.even ? 'rgba(0,0,0,.025)' : 'transparent', pointerEvents: 'none' }} />
@@ -120,7 +125,6 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
 
           {projects.map(p => {
             const isCol = !!collapsed[p.id]
-            const tasks = db.tasks.filter(t => t.project_id === p.id)
             const bL = pct(p.start_date)
             const bW = bw(p.start_date, p.end_date)
             const col = clientColor(db.clients, p.client_id)
@@ -145,7 +149,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                   </div>
                 </div>
               </div>,
-              ...(!isCol ? tasks.map(t => {
+              ...(!isCol ? p.milestones.map(t => {
                 const tL2 = pct(t.start_date); const tW = bw(t.start_date, t.end_date); const tBC = BAR_COL[t.status]
                 return (
                   <div key={t.id} className="grow">

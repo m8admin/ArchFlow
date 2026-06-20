@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import type { Project, Client, Status } from '@/lib/types'
-import { STATUS_META } from '@/lib/types'
-import { todayStr, dFrom } from '@/lib/utils'
+import type { Project, Client } from '@/lib/types'
 
 interface Props {
   open: boolean
@@ -20,10 +18,6 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
   const [name, setName] = useState('')
   const [clientId, setClientId] = useState('')
   const [newClient, setNewClient] = useState('')
-  const [startDate, setStartDate] = useState(todayStr())
-  const [endDate, setEndDate] = useState(dFrom(30))
-  const [status, setStatus] = useState<Status>('planning')
-  const [pct, setPct] = useState(0)
   const [sqm, setSqm] = useState('')
   const [floors, setFloors] = useState('')
   const [uses, setUses] = useState('')
@@ -35,18 +29,13 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       setName(project.name)
       setClientId(project.client_id)
       setNewClient('')
-      setStartDate(project.start_date)
-      setEndDate(project.end_date)
-      setStatus(project.status)
-      setPct(project.pct)
       setSqm(project.sqm ? String(project.sqm) : '')
       setFloors(project.floors ? String(project.floors) : '')
       setUses(project.uses || '')
       setNotes(project.notes || '')
     } else {
       setName(''); setClientId(clients[0]?.id || ''); setNewClient('')
-      setStartDate(todayStr()); setEndDate(dFrom(30))
-      setStatus('planning'); setPct(0); setSqm(''); setFloors(''); setUses(''); setNotes('')
+      setSqm(''); setFloors(''); setUses(''); setNotes('')
     }
   }, [project, open, clients])
 
@@ -59,8 +48,6 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
     await onSave({
       id: project?.id,
       name: name.trim(), client_id: cid,
-      start_date: startDate, end_date: endDate,
-      status, pct: Math.min(100, Math.max(0, pct)),
       sqm: sqm ? parseInt(sqm) : null,
       floors: floors ? parseInt(floors) : null,
       uses: uses.trim(), notes: notes.trim(),
@@ -93,24 +80,6 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
               <input style={{ flex: 1 }} placeholder="New client name" value={newClient} onChange={e => setNewClient(e.target.value)} />
             )}
           </div>
-        </div>
-        <div className="fr">
-          <label>Start date</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-        </div>
-        <div className="fr">
-          <label>Deadline</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-        </div>
-        <div className="fr">
-          <label>Status</label>
-          <select value={status} onChange={e => setStatus(e.target.value as Status)}>
-            {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-        </div>
-        <div className="fr">
-          <label>Progress (%)</label>
-          <input type="number" min={0} max={100} value={pct} onChange={e => setPct(parseInt(e.target.value) || 0)} />
         </div>
 
         <div className="sect-divider">Project Details</div>

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/Badge'
 import type { AppDB, Project, ZoomLevel, Status } from '@/lib/types'
 import { STATUS_META } from '@/lib/types'
-import { clientColor, workerColor, dlCls, wkDays, fmtFull } from '@/lib/utils'
+import { clientColor, workerColor, dlCls, wkDays, fmtFull, projectAggregates } from '@/lib/utils'
 
 interface Props {
   db: AppDB
@@ -25,18 +25,24 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
 
-  const projects = db.projects.filter(p => {
+  const projectsWithAgg = db.projects.map(p => {
+    const milestones = db.tasks.filter(t => t.project_id === p.id)
+    const agg = projectAggregates(milestones)
+    return { ...p, ...agg, milestones }
+  })
+
+  const projects = projectsWithAgg.filter(p => {
     if (filterClient && p.client_id !== filterClient) return false
     if (filterStatus && p.status !== filterStatus) return false
     return true
   })
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  const active = db.projects.filter(p => p.status === 'active').length
-  const delayed = db.projects.filter(p => p.status === 'delayed').length
+  const active = projectsWithAgg.filter(p => p.status === 'active').length
+  const delayed = projectsWithAgg.filter(p => p.status === 'delayed').length
   const dueSoon = db.tasks.filter(t => { const ms = new Date(t.end_date).getTime() - today.getTime(); return ms >= 0 && ms < 7 * 86400000 && t.status !== 'done' }).length
-  const avg = db.projects.length ? Math.round(db.projects.reduce((a, p) => a + p.pct, 0) / db.projects.length) : 0
-  const totalWD = db.projects.reduce((a, p) => a + wkDays(p.start_date, p.end_date), 0)
+  const avg = projectsWithAgg.length ? Math.round(projectsWithAgg.reduce((a, p) => a + p.pct, 0) / projectsWithAgg.length) : 0
+  const totalWD = projectsWithAgg.filter(p => p.start && p.end).reduce((a, p) => a + wkDays(p.start, p.end), 0)
   const sqmProjs = db.projects.filter(p => (p.sqm || 0) > 0)
   const avgSqm = sqmProjs.length ? Math.round(sqmProjs.reduce((a, p) => a + (p.sqm || 0), 0) / sqmProjs.length) : 0
 
@@ -144,8 +150,7 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
             ) : projects.map(p => {
               const col = clientColor(db.clients, p.client_id)
               const isCol = !!collapsed[p.id]
-              const tasks = db.tasks.filter(t => t.project_id === p.id)
-              const dc = dlCls(p.end_date)
+              const dc = p.end ? dlCls(p.end) : ''
               return [
                 <tr key={p.id} className="pr">
                   <td>
@@ -160,17 +165,17 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
                   <td style={{ fontSize: 12, color: 'var(--tx2)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.uses || '—'}</td>
                   <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{p.floors || '—'}</td>
                   <td colSpan={2}></td>
-                  <td style={{ fontSize: 12 }}>{fmtFull(p.start_date)}</td>
-                  <td style={{ fontSize: 12 }} className={dc}>{fmtFull(p.end_date)}</td>
+                  <td style={{ fontSize: 12 }}>{p.start ? fmtFull(p.start) : '—'}</td>
+                  <td style={{ fontSize: 12 }} className={dc}>{p.end ? fmtFull(p.end) : '—'}</td>
                   <td><Badge status={p.status} /></td>
                   <td><ProgressBar status={p.status} pct={p.pct} /></td>
                   <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{p.pct}%</td>
                   <td><button className="bi" onClick={() => onEditProject(p)}>✎</button></td>
                 </tr>,
                 ...(!isCol ? (
-                  tasks.length === 0
+                  p.milestones.length === 0
                     ? [<tr key={`${p.id}-empty`} className="tk"><td className="ind" colSpan={13} style={{ color: 'var(--tx3)', fontSize: 12 }}>No milestones — <button className="btn bsm" onClick={() => onNewTask(p.id)}>+ Add milestone</button></td></tr>]
-                    : tasks.map(t => {
+                    : p.milestones.map(t => {
                       const tdc = dlCls(t.end_date)
                       return (
                         <tr key={t.id} className="tk">

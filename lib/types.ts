@@ -13,10 +13,6 @@ export interface Project {
   id: string
   name: string
   client_id: string
-  start_date: string
-  end_date: string
-  status: Status
-  pct: number
   notes: string
   sqm: number | null
   uses: string

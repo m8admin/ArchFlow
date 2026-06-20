@@ -37,11 +37,13 @@ export function useAppData() {
   async function saveProject(data: Omit<Project, 'id'> & { id?: string }) {
     if (data.id) {
       const { id, ...rest } = data
-      await supabase.from('projects').update(rest).eq('id', id)
+      const { error } = await supabase.from('projects').update(rest).eq('id', id)
+      if (error) console.error('saveProject update error:', error)
     } else {
       const { id: _id, ...rest } = data as Project
       void _id
-      await supabase.from('projects').insert(rest)
+      const { error } = await supabase.from('projects').insert(rest)
+      if (error) console.error('saveProject insert error:', error)
     }
     await fetchAll()
   }

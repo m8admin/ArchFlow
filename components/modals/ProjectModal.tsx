@@ -158,7 +158,7 @@ export function ProjectModal({ open, project, clients, contractors, workers, onS
           <input type="number" min={0} value={sqm} onChange={e => setSqm(e.target.value)} placeholder="e.g. 4800" />
         </div>
         <div className="fr">
-          <label>Number of floors</label>
+          <label>Number of typical floors</label>
           <input type="number" min={0} value={floors} onChange={e => setFloors(e.target.value)} placeholder="e.g. 12" />
         </div>
         <div className="fr ff">

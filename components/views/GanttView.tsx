@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import type { AppDB, ZoomLevel, Status } from '@/lib/types'
 import { STATUS_META } from '@/lib/types'
-import { STATUS_META } from '@/lib/types'
 import { clientColor, fmt, pd, ddiff, wkn, projectAggregates } from '@/lib/utils'
 
 const BAR_COL: Record<Status, string> = {

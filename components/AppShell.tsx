@@ -244,21 +244,21 @@ export default function AppShell() {
               onNewProject={() => setModal({ kind: 'project' })}
               onNewMilestone={pid => setModal({ kind: 'milestone', projectId: pid })}
               onNewSubtask={(pid, mid) => setModal({ kind: 'subtask', projectId: pid, milestoneId: mid })}
-              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.parent_milestone_id ? 'subtask' : 'milestone', task: t }) }}
+              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.kind === 'milestone' ? 'milestone' : 'subtask', task: t }) }}
             />
           ) : view === 'gantt' ? (
             <GanttView
               db={db} filterClient={filterClient} filterStatus={filterStatus} zoom={zoom}
               setZoom={setZoom} setFilterClient={setFilterClient}
               onEditProject={id => { const p = db.projects.find(x => x.id === id); if (p) setModal({ kind: 'project', project: p }) }}
-              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.parent_milestone_id ? 'subtask' : 'milestone', task: t }) }}
+              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.kind === 'milestone' ? 'milestone' : 'subtask', task: t }) }}
               onNewProject={() => setModal({ kind: 'project' })}
             />
           ) : view === 'subview' ? (
             <SubView
               db={db}
               onOpenProfile={(type, id) => setProfile({ type, id })}
-              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.parent_milestone_id ? 'subtask' : 'milestone', task: t }) }}
+              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.kind === 'milestone' ? 'milestone' : 'subtask', task: t }) }}
             />
           ) : view === 'clients' ? (
             <DirectoryView db={db} type="client" onOpenProfile={(t, id) => setProfile({ type: t, id })} onAddEntry={() => setModal({ kind: 'dir', type: 'client' })} />

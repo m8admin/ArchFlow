@@ -81,16 +81,16 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
     }
   }, [task, open, defaultProjectId, defaultMilestoneId, projects])
 
-  const availableMilestones = milestones.filter(m => m.project_id === projectId && !m.parent_milestone_id)
+  const availableMilestones = milestones.filter(m => m.project_id === projectId && m.kind === 'milestone')
 
   async function handleSave() {
     if (!name.trim()) { toast(`${label} name required.`); return }
     if (!projectId) { toast('Project required.'); return }
-    if (!isMilestone && !parentMilestoneId) { toast('Parent milestone required.'); return }
     setSaving(true)
     await onSave({
       id: task?.id, name: name.trim(), project_id: projectId,
-      parent_milestone_id: isMilestone ? null : parentMilestoneId,
+      kind: isMilestone ? 'milestone' as const : 'task' as const,
+      parent_milestone_id: isMilestone ? null : (parentMilestoneId || null),
       start_date: startDate, end_date: endDate,
       status, pct: Math.min(100, Math.max(0, pct)),
       notes: notes.trim(),
@@ -124,12 +124,12 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
           </select>
         </div>
 
-        {/* Task: select parent milestone */}
+        {/* Task: optionally link to a milestone */}
         {!isMilestone && (
           <div className="fr ff">
-            <label>Parent milestone *</label>
+            <label>Under milestone (optional)</label>
             <select value={parentMilestoneId} onChange={e => setParentMilestoneId(e.target.value)}>
-              <option value="">— Select milestone —</option>
+              <option value="">— Directly under project —</option>
               {availableMilestones.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>

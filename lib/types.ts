@@ -22,6 +22,7 @@ export interface Project {
 export interface Task {
   id: string
   project_id: string
+  kind: 'milestone' | 'task'
   name: string
   start_date: string
   end_date: string

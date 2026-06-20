@@ -27,9 +27,11 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
 
   const projectsWithAgg = db.projects.map(p => {
-    const milestones = db.tasks.filter(t => t.project_id === p.id && !t.parent_milestone_id)
-    const agg = projectAggregates(milestones)
-    return { ...p, ...agg, milestones }
+    const allProjectTasks = db.tasks.filter(t => t.project_id === p.id)
+    const milestones = allProjectTasks.filter(t => t.kind === 'milestone')
+    const projectTasks = allProjectTasks.filter(t => t.kind === 'task' && !t.parent_milestone_id)
+    const agg = projectAggregates(allProjectTasks)
+    return { ...p, ...agg, milestones, projectTasks }
   })
 
   const projects = projectsWithAgg.filter(p => {
@@ -174,53 +176,85 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
                   <td><button className="bi" onClick={() => onEditProject(p)}>✎</button></td>
                 </tr>,
                 ...(!isCol ? (
-                  p.milestones.length === 0
-                    ? [<tr key={`${p.id}-empty`} className="tk"><td className="ind" colSpan={13} style={{ color: 'var(--tx3)', fontSize: 12 }}>No milestones — <button className="btn bsm" onClick={() => onNewMilestone(p.id)}>+ Add milestone</button></td></tr>]
-                    : p.milestones.flatMap(m => {
-                      const mdc = dlCls(m.end_date)
-                      const subtasks = db.tasks.filter(t => t.parent_milestone_id === m.id)
-                      return [
-                        <tr key={m.id} className="tk">
-                          <td className="ind" style={{ fontWeight: 600 }}>↪ <span className="pnc" onClick={() => onEditTask(m.id)}>{m.name}</span>{m.modeller_hours ? <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 400, marginLeft: 6 }}>{m.modeller_hours}h</span> : null}</td>
-                          <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{clientName(p.client_id)}</td>
-                          <td colSpan={3}></td>
-                          <td><CoordinatorCell coordId={m.coordinator_id} coordType={m.coordinator_type} /></td>
-                          <td style={{ maxWidth: 180 }}><ModellerCell wids={m.modeller_worker_ids || []} cids={m.modeller_contractor_ids || []} /></td>
-                          <td style={{ fontSize: 12 }}>{fmtFull(m.start_date)}</td>
-                          <td style={{ fontSize: 12 }} className={mdc}>{fmtFull(m.end_date)}</td>
-                          <td><Badge status={m.status} /></td>
-                          <td><ProgressBar status={m.status} pct={m.pct} /></td>
-                          <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{m.pct}%</td>
-                          <td>
-                            <div style={{ display: 'flex', gap: 2 }}>
-                              <button className="bi" onClick={() => onEditTask(m.id)}>✎</button>
-                              <button className="bi" title="Add task" onClick={() => onNewSubtask(p.id, m.id)}>+</button>
-                            </div>
-                          </td>
-                        </tr>,
-                        ...subtasks.map(st => {
-                          const stdc = dlCls(st.end_date)
-                          return (
-                            <tr key={st.id} className="tk">
-                              <td style={{ paddingLeft: 48, fontSize: 12, color: 'var(--tx2)' }}>
-                                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--bl-tx)', background: 'var(--bl-bg)', padding: '1px 6px', borderRadius: 10, marginRight: 5 }}>Task</span>
-                                {st.name}
-                              </td>
-                              <td></td>
-                              <td colSpan={3}></td>
-                              <td><CoordinatorCell coordId={st.coordinator_id} coordType={st.coordinator_type} /></td>
-                              <td style={{ maxWidth: 180 }}><ModellerCell wids={st.modeller_worker_ids || []} cids={st.modeller_contractor_ids || []} /></td>
-                              <td style={{ fontSize: 12 }}>{fmtFull(st.start_date)}</td>
-                              <td style={{ fontSize: 12 }} className={stdc}>{fmtFull(st.end_date)}</td>
-                              <td><Badge status={st.status} /></td>
-                              <td><ProgressBar status={st.status} pct={st.pct} /></td>
-                              <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{st.pct}%</td>
-                              <td><button className="bi" onClick={() => onEditTask(st.id)}>✎</button></td>
-                            </tr>
-                          )
-                        })
-                      ]
-                    })
+                  (p.milestones.length === 0 && p.projectTasks.length === 0)
+                    ? [<tr key={`${p.id}-empty`} className="tk"><td className="ind" colSpan={13} style={{ color: 'var(--tx3)', fontSize: 12 }}>No milestones — <button className="btn bsm" onClick={() => onNewMilestone(p.id)}>+ Add milestone</button> <button className="btn bsm" onClick={() => onNewSubtask(p.id, '')}>+ Add task</button></td></tr>]
+                    : [
+                      // Milestones and their subtasks
+                      ...p.milestones.flatMap(m => {
+                        const mdc = dlCls(m.end_date)
+                        const subtasks = db.tasks.filter(t => t.parent_milestone_id === m.id && t.kind === 'task')
+                        return [
+                          <tr key={m.id} className="tk">
+                            <td className="ind" style={{ fontWeight: 600 }}>↪ <span className="pnc" onClick={() => onEditTask(m.id)}>{m.name}</span>{m.modeller_hours ? <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 400, marginLeft: 6 }}>{m.modeller_hours}h</span> : null}</td>
+                            <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{clientName(p.client_id)}</td>
+                            <td colSpan={3}></td>
+                            <td><CoordinatorCell coordId={m.coordinator_id} coordType={m.coordinator_type} /></td>
+                            <td style={{ maxWidth: 180 }}><ModellerCell wids={m.modeller_worker_ids || []} cids={m.modeller_contractor_ids || []} /></td>
+                            <td style={{ fontSize: 12 }}>{fmtFull(m.start_date)}</td>
+                            <td style={{ fontSize: 12 }} className={mdc}>{fmtFull(m.end_date)}</td>
+                            <td><Badge status={m.status} /></td>
+                            <td><ProgressBar status={m.status} pct={m.pct} /></td>
+                            <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{m.pct}%</td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 2 }}>
+                                <button className="bi" onClick={() => onEditTask(m.id)}>✎</button>
+                                <button className="bi" title="Add task" onClick={() => onNewSubtask(p.id, m.id)}>+</button>
+                              </div>
+                            </td>
+                          </tr>,
+                          ...subtasks.map(st => {
+                            const stdc = dlCls(st.end_date)
+                            return (
+                              <tr key={st.id} className="tk">
+                                <td style={{ paddingLeft: 48, fontSize: 12, color: 'var(--tx2)' }}>
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--bl-tx)', background: 'var(--bl-bg)', padding: '1px 6px', borderRadius: 10, marginRight: 5 }}>Task</span>
+                                  <span className="pnc" onClick={() => onEditTask(st.id)}>{st.name}</span>
+                                </td>
+                                <td></td>
+                                <td colSpan={3}></td>
+                                <td><CoordinatorCell coordId={st.coordinator_id} coordType={st.coordinator_type} /></td>
+                                <td style={{ maxWidth: 180 }}><ModellerCell wids={st.modeller_worker_ids || []} cids={st.modeller_contractor_ids || []} /></td>
+                                <td style={{ fontSize: 12 }}>{fmtFull(st.start_date)}</td>
+                                <td style={{ fontSize: 12 }} className={stdc}>{fmtFull(st.end_date)}</td>
+                                <td><Badge status={st.status} /></td>
+                                <td><ProgressBar status={st.status} pct={st.pct} /></td>
+                                <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{st.pct}%</td>
+                                <td><button className="bi" onClick={() => onEditTask(st.id)}>✎</button></td>
+                              </tr>
+                            )
+                          })
+                        ]
+                      }),
+                      // Project-level tasks (not under any milestone)
+                      ...p.projectTasks.map(st => {
+                        const stdc = dlCls(st.end_date)
+                        return (
+                          <tr key={st.id} className="tk">
+                            <td className="ind" style={{ fontSize: 12, color: 'var(--tx2)' }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--bl-tx)', background: 'var(--bl-bg)', padding: '1px 6px', borderRadius: 10, marginRight: 5 }}>Task</span>
+                              <span className="pnc" onClick={() => onEditTask(st.id)}>{st.name}</span>
+                            </td>
+                            <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{clientName(p.client_id)}</td>
+                            <td colSpan={3}></td>
+                            <td><CoordinatorCell coordId={st.coordinator_id} coordType={st.coordinator_type} /></td>
+                            <td style={{ maxWidth: 180 }}><ModellerCell wids={st.modeller_worker_ids || []} cids={st.modeller_contractor_ids || []} /></td>
+                            <td style={{ fontSize: 12 }}>{fmtFull(st.start_date)}</td>
+                            <td style={{ fontSize: 12 }} className={stdc}>{fmtFull(st.end_date)}</td>
+                            <td><Badge status={st.status} /></td>
+                            <td><ProgressBar status={st.status} pct={st.pct} /></td>
+                            <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{st.pct}%</td>
+                            <td><button className="bi" onClick={() => onEditTask(st.id)}>✎</button></td>
+                          </tr>
+                        )
+                      }),
+                      // Add buttons row
+                      <tr key={`${p.id}-add`} className="tk">
+                        <td className="ind" colSpan={13} style={{ fontSize: 12 }}>
+                          <button className="btn bxs" onClick={() => onNewMilestone(p.id)}>+ Milestone</button>{' '}
+                          <button className="btn bxs" onClick={() => onNewSubtask(p.id, '')}>+ Task</button>
+                        </td>
+                      </tr>,
+                    ]
                 ) : [])
               ]
             })}

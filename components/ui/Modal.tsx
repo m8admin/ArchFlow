@@ -17,7 +17,7 @@ export function Modal({ title, open, onClose, children }: ModalProps) {
   }, [onClose])
 
   return (
-    <div className={`overlay${open ? ' open' : ''}`} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div className={`overlay${open ? ' open' : ''}`} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="modal">
         <div className="m-hd">
           <div className="m-title">{title}</div>

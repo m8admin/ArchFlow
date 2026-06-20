@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { AppDB, ZoomLevel, Status } from '@/lib/types'
 import { STATUS_META } from '@/lib/types'
+import { STATUS_META } from '@/lib/types'
 import { clientColor, fmt, pd, ddiff, wkn, projectAggregates } from '@/lib/utils'
 
 const BAR_COL: Record<Status, string> = {
@@ -98,6 +99,24 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
 
   return (
     <div>
+      {/* Legend */}
+      <div className="lgnd">
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', letterSpacing: '.06em', marginBottom: 5 }}>CLIENTS</div>
+            <div>
+              {db.clients.map(c => { const col = clientColor(db.clients, c.id); return <span key={c.id} className="lchip" style={{ background: col + '18', borderColor: col + '44', color: col }}><span className="ldot" style={{ background: col }} />{c.name}</span> })}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', letterSpacing: '.06em', marginBottom: 5 }}>STATUS</div>
+            <div>
+              {Object.entries(STATUS_META).map(([k, v]) => <span key={k} className="lchip" style={{ background: v.bg, color: v.col }}><span className="ldot" style={{ background: v.col }} />{v.label}</span>)}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="tbar">
         <ZoomBar zoom={zoom} setZoom={setZoom} />
         <select style={{ fontSize: 12 }} value={filterClient} onChange={e => setFilterClient(e.target.value)}>

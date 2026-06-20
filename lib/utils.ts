@@ -73,7 +73,8 @@ export function workerColor(workers: { id: string }[], wid: string): string {
 
 import type { Task, Status } from './types'
 
-export function projectAggregates(milestones: Task[]): { start: string; end: string; status: Status; pct: number } {
+export function projectAggregates(allTasks: Task[]): { start: string; end: string; status: Status; pct: number } {
+  const milestones = allTasks.filter(t => !t.parent_milestone_id)
   if (!milestones.length) return { start: '', end: '', status: 'planning', pct: 0 }
   const starts = milestones.map(m => m.start_date).sort()
   const ends = milestones.map(m => m.end_date).sort()

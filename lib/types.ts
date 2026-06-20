@@ -32,6 +32,8 @@ export interface Task {
   coordinator_type: 'worker' | 'contractor' | null
   modeller_worker_ids: string[]
   modeller_contractor_ids: string[]
+  parent_milestone_id: string | null
+  modeller_hours: number | null
 }
 
 export interface Client {

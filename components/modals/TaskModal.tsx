@@ -9,8 +9,11 @@ import { todayStr, dFrom } from '@/lib/utils'
 interface Props {
   open: boolean
   task?: Task | null
+  mode: 'milestone' | 'task'
   defaultProjectId?: string
+  defaultMilestoneId?: string
   projects: Project[]
+  milestones: Task[]
   contractors: Contractor[]
   workers: Worker[]
   onSave: (t: Omit<Task, 'id'> & { id?: string }) => Promise<void>
@@ -19,7 +22,7 @@ interface Props {
   toast: (msg: string) => void
 }
 
-function CheckChips({ label, items, selected, onChange }: { label: string; items: { id: string; name: string; role?: string }[]; selected: string[]; onChange: (ids: string[]) => void }) {
+function CheckChips({ label, items, selected, onChange }: { label: string; items: { id: string; name: string }[]; selected: string[]; onChange: (ids: string[]) => void }) {
   if (!items.length) return null
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id])
@@ -37,9 +40,13 @@ function CheckChips({ label, items, selected, onChange }: { label: string; items
   )
 }
 
-export function TaskModal({ open, task, defaultProjectId, projects, contractors, workers, onSave, onDelete, onClose, toast }: Props) {
+export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestoneId, projects, milestones, contractors, workers, onSave, onDelete, onClose, toast }: Props) {
+  const isMilestone = mode === 'milestone'
+  const label = isMilestone ? 'Milestone' : 'Task'
+
   const [name, setName] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [parentMilestoneId, setParentMilestoneId] = useState('')
   const [startDate, setStartDate] = useState(todayStr())
   const [endDate, setEndDate] = useState(dFrom(14))
   const [status, setStatus] = useState<Status>('planning')
@@ -49,32 +56,41 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
   const [coordinatorType, setCoordinatorType] = useState<'worker' | 'contractor'>('worker')
   const [modellerWorkerIds, setModellerWorkerIds] = useState<string[]>([])
   const [modellerContractorIds, setModellerContractorIds] = useState<string[]>([])
+  const [modellerHours, setModellerHours] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (task) {
       setName(task.name); setProjectId(task.project_id)
+      setParentMilestoneId(task.parent_milestone_id || '')
       setStartDate(task.start_date); setEndDate(task.end_date)
       setStatus(task.status); setPct(task.pct); setNotes(task.notes || '')
       setCoordinatorId(task.coordinator_id || '')
       setCoordinatorType(task.coordinator_type || 'worker')
       setModellerWorkerIds(task.modeller_worker_ids || [])
       setModellerContractorIds(task.modeller_contractor_ids || [])
+      setModellerHours(task.modeller_hours ? String(task.modeller_hours) : '')
     } else {
       setName(''); setProjectId(defaultProjectId || projects[0]?.id || '')
+      setParentMilestoneId(defaultMilestoneId || '')
       setStartDate(todayStr()); setEndDate(dFrom(14))
       setStatus('planning'); setPct(0); setNotes('')
       setCoordinatorId(''); setCoordinatorType('worker')
       setModellerWorkerIds([]); setModellerContractorIds([])
+      setModellerHours('')
     }
-  }, [task, open, defaultProjectId, projects])
+  }, [task, open, defaultProjectId, defaultMilestoneId, projects])
+
+  const availableMilestones = milestones.filter(m => m.project_id === projectId && !m.parent_milestone_id)
 
   async function handleSave() {
-    if (!name.trim()) { toast('Milestone name required.'); return }
+    if (!name.trim()) { toast(`${label} name required.`); return }
     if (!projectId) { toast('Project required.'); return }
+    if (!isMilestone && !parentMilestoneId) { toast('Parent milestone required.'); return }
     setSaving(true)
     await onSave({
       id: task?.id, name: name.trim(), project_id: projectId,
+      parent_milestone_id: isMilestone ? null : parentMilestoneId,
       start_date: startDate, end_date: endDate,
       status, pct: Math.min(100, Math.max(0, pct)),
       notes: notes.trim(),
@@ -82,22 +98,23 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
       coordinator_type: coordinatorId ? coordinatorType : null,
       modeller_worker_ids: modellerWorkerIds,
       modeller_contractor_ids: modellerContractorIds,
+      modeller_hours: isMilestone && modellerHours ? parseFloat(modellerHours) : null,
     })
     setSaving(false)
   }
 
   async function handleDelete() {
     if (!task || !onDelete) return
-    if (!confirm('Delete this milestone?')) return
+    if (!confirm(`Delete this ${label.toLowerCase()}?`)) return
     await onDelete(task.id)
     onClose()
   }
 
   return (
-    <Modal title={task ? 'Edit milestone' : 'New milestone'} open={open} onClose={onClose}>
+    <Modal title={task ? `Edit ${label.toLowerCase()}` : `New ${label.toLowerCase()}`} open={open} onClose={onClose}>
       <div className="fg">
         <div className="fr ff">
-          <label>Milestone name *</label>
+          <label>{label} name *</label>
           <input value={name} onChange={e => setName(e.target.value)} />
         </div>
         <div className="fr ff">
@@ -106,6 +123,18 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
+
+        {/* Task: select parent milestone */}
+        {!isMilestone && (
+          <div className="fr ff">
+            <label>Parent milestone *</label>
+            <select value={parentMilestoneId} onChange={e => setParentMilestoneId(e.target.value)}>
+              <option value="">— Select milestone —</option>
+              {availableMilestones.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+        )}
+
         <div className="fr">
           <label>Start date</label>
           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
@@ -125,9 +154,16 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
           <input type="number" min={0} max={100} value={pct} onChange={e => setPct(parseInt(e.target.value) || 0)} />
         </div>
 
+        {/* Modeller hours - milestones only */}
+        {isMilestone && (
+          <div className="fr ff">
+            <label>Total modeller hours</label>
+            <input type="number" min={0} step="0.5" value={modellerHours} onChange={e => setModellerHours(e.target.value)} placeholder="e.g. 120" />
+          </div>
+        )}
+
         <div className="sect-divider">Assignments</div>
 
-        {/* Coordinator */}
         <div className="fr ff">
           <label>Coordinator (Project Manager)</label>
           <select
@@ -152,9 +188,7 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
           </select>
         </div>
 
-        {/* Modellers — workers */}
         <CheckChips label="Modellers (Workers)" items={workers} selected={modellerWorkerIds} onChange={setModellerWorkerIds} />
-        {/* Modellers — subcontractors */}
         <CheckChips label="Modellers (Subcontractors)" items={contractors} selected={modellerContractorIds} onChange={setModellerContractorIds} />
 
         <div className="fr ff">
@@ -165,7 +199,7 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
       <div className="fa">
         <div>
           {task && onDelete && (
-            <button className="btn bd-btn bsm" onClick={handleDelete}>Delete milestone</button>
+            <button className="btn bd-btn bsm" onClick={handleDelete}>Delete {label.toLowerCase()}</button>
           )}
         </div>
         <div className="fa-r">

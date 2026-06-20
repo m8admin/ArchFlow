@@ -24,7 +24,8 @@ import { doCSV, doExcel, doPrint } from '@/lib/export'
 type ModalState =
   | { kind: 'none' }
   | { kind: 'project'; project?: Project }
-  | { kind: 'task'; task?: Task; projectId?: string }
+  | { kind: 'milestone'; task?: Task; projectId?: string }
+  | { kind: 'subtask'; task?: Task; projectId?: string; milestoneId?: string }
   | { kind: 'dir'; type: DirType; item?: Client | Contractor | Worker }
   | { kind: 'contact'; parentId: string; contact?: Contact }
 
@@ -241,22 +242,23 @@ export default function AppShell() {
               setZoom={setZoom} setFilterClient={setFilterClient} setFilterStatus={setFilterStatus}
               onEditProject={p => setModal({ kind: 'project', project: p })}
               onNewProject={() => setModal({ kind: 'project' })}
-              onNewTask={pid => setModal({ kind: 'task', projectId: pid })}
-              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: 'task', task: t }) }}
+              onNewMilestone={pid => setModal({ kind: 'milestone', projectId: pid })}
+              onNewSubtask={(pid, mid) => setModal({ kind: 'subtask', projectId: pid, milestoneId: mid })}
+              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.parent_milestone_id ? 'subtask' : 'milestone', task: t }) }}
             />
           ) : view === 'gantt' ? (
             <GanttView
               db={db} filterClient={filterClient} filterStatus={filterStatus} zoom={zoom}
               setZoom={setZoom} setFilterClient={setFilterClient}
               onEditProject={id => { const p = db.projects.find(x => x.id === id); if (p) setModal({ kind: 'project', project: p }) }}
-              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: 'task', task: t }) }}
+              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.parent_milestone_id ? 'subtask' : 'milestone', task: t }) }}
               onNewProject={() => setModal({ kind: 'project' })}
             />
           ) : view === 'subview' ? (
             <SubView
               db={db}
               onOpenProfile={(type, id) => setProfile({ type, id })}
-              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: 'task', task: t }) }}
+              onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.parent_milestone_id ? 'subtask' : 'milestone', task: t }) }}
             />
           ) : view === 'clients' ? (
             <DirectoryView db={db} type="client" onOpenProfile={(t, id) => setProfile({ type: t, id })} onAddEntry={() => setModal({ kind: 'dir', type: 'client' })} />
@@ -279,10 +281,20 @@ export default function AppShell() {
           toast={toast}
         />
       )}
-      {modal.kind === 'task' && (
+      {modal.kind === 'milestone' && (
         <TaskModal
-          open={true} task={modal.task} defaultProjectId={modal.projectId}
-          projects={db.projects} contractors={db.contractors} workers={db.workers}
+          open={true} task={modal.task} mode="milestone" defaultProjectId={modal.projectId}
+          projects={db.projects} milestones={db.tasks} contractors={db.contractors} workers={db.workers}
+          onSave={handleSaveTask}
+          onDelete={handleDeleteTask}
+          onClose={() => setModal({ kind: 'none' })}
+          toast={toast}
+        />
+      )}
+      {modal.kind === 'subtask' && (
+        <TaskModal
+          open={true} task={modal.task} mode="task" defaultProjectId={modal.projectId} defaultMilestoneId={modal.milestoneId}
+          projects={db.projects} milestones={db.tasks} contractors={db.contractors} workers={db.workers}
           onSave={handleSaveTask}
           onDelete={handleDeleteTask}
           onClose={() => setModal({ kind: 'none' })}

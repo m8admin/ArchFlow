@@ -1,19 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { AppDB, Project, Task, Client, Contractor, Worker } from '@/lib/types'
-import { dFrom, todayStr } from '@/lib/utils'
 
 const EMPTY_DB: AppDB = { projects: [], tasks: [], clients: [], contractors: [], workers: [] }
 
 export function useAppData() {
   const [db, setDB] = useState<AppDB>(EMPTY_DB)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
 
   const fetchAll = useCallback(async () => {
-    setLoading(true)
     const [p, t, c, sc, w] = await Promise.all([
       supabase.from('projects').select('*').order('created_at'),
       supabase.from('tasks').select('*').order('created_at'),
@@ -33,7 +32,6 @@ export function useAppData() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  // ── Projects ──────────────────────────────────────────────────────────────
   async function saveProject(data: Omit<Project, 'id'> & { id?: string }) {
     if (data.id) {
       const { id, ...rest } = data
@@ -54,7 +52,6 @@ export function useAppData() {
     await fetchAll()
   }
 
-  // ── Tasks ─────────────────────────────────────────────────────────────────
   async function saveTask(data: Omit<Task, 'id'> & { id?: string }) {
     if (data.id) {
       const { id, ...rest } = data
@@ -74,18 +71,19 @@ export function useAppData() {
     await fetchAll()
   }
 
-  // ── Directory entries ─────────────────────────────────────────────────────
   async function saveDirEntry(
     type: 'clients' | 'contractors' | 'workers',
     data: (Client | Contractor | Worker) & { id?: string }
   ) {
     if (data.id) {
       const { id, ...rest } = data
-      await supabase.from(type).update(rest).eq('id', id)
+      const { error } = await supabase.from(type).update(rest).eq('id', id)
+      if (error) console.error('saveDirEntry update error:', error)
     } else {
       const { id: _id, ...rest } = data as Client
       void _id
-      await supabase.from(type).insert(rest)
+      const { error } = await supabase.from(type).insert(rest)
+      if (error) console.error('saveDirEntry insert error:', error)
     }
     await fetchAll()
   }
@@ -96,19 +94,4 @@ export function useAppData() {
   }
 
   return { db, loading, fetchAll, saveProject, deleteProject, saveTask, deleteTask, saveDirEntry, deleteDirEntry }
-}
-
-export function emptyProject(clientId?: string): Omit<Project, 'id'> {
-  return {
-    name: '', client_id: clientId || '', start_date: todayStr(), end_date: dFrom(30),
-    status: 'planning', pct: 0, notes: '', sqm: null, uses: '', floors: null,
-    worker_ids: [], contractor_ids: [],
-  }
-}
-
-export function emptyTask(projectId?: string): Omit<Task, 'id'> {
-  return {
-    name: '', project_id: projectId || '', start_date: todayStr(), end_date: dFrom(14),
-    status: 'planning', pct: 0, notes: '', worker_ids: [], contractor_ids: [],
-  }
 }

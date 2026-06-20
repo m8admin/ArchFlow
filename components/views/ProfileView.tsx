@@ -124,7 +124,7 @@ function ClientProfile({ db, id, onEditProject, item, onAddContact, onEditContac
 }
 
 function ContractorProfile({ db, id, item, onAddContact, onEditContact, onDeleteContact }: { db: AppDB; id: string; item: typeof db.contractors[0]; onAddContact: () => void; onEditContact: (ct: Contact) => void; onDeleteContact: (id: string) => void }) {
-  const ctt = db.tasks.filter(t => (t.contractor_ids || []).includes(id))
+  const ctt = db.tasks.filter(t => (t.modeller_contractor_ids || []).includes(id) || (t.coordinator_id === id && t.coordinator_type === 'contractor'))
   const cprojs = [...new Set(ctt.map(t => t.project_id))].map(pid => db.projects.find(p => p.id === pid)).filter(Boolean)
   const ca = ctt.filter(t => t.status === 'active').length
   const cd = ctt.filter(t => t.status === 'done').length
@@ -136,7 +136,7 @@ function ContractorProfile({ db, id, item, onAddContact, onEditContact, onDelete
     <>
       <div className="pg">
         {[
-          { l: 'TOTAL TASKS', v: ctt.length },
+          { l: 'TOTAL MILESTONES', v: ctt.length },
           { l: 'ACTIVE', v: ca, style: { color: 'var(--bl)' } },
           { l: 'DELAYED', v: cdl, style: { color: 'var(--rd)' } },
           { l: 'COMPLETED', v: cd, style: { color: 'var(--gn)' } },
@@ -149,20 +149,20 @@ function ContractorProfile({ db, id, item, onAddContact, onEditContact, onDelete
       </div>
       {ctt.length > 0 && (
         <>
-          <div className="sec-t">Assigned tasks</div>
+          <div className="sec-t">Assigned milestones</div>
           <div className="tw" style={{ marginBottom: 14 }}>
-            <table><thead><tr><th>Task</th><th>Project</th><th>Workers on task</th><th>Start</th><th>Deadline</th><th>Status</th><th>Progress</th></tr></thead>
+            <table><thead><tr><th>Milestone</th><th>Project</th><th>Role</th><th>Start</th><th>Deadline</th><th>Status</th><th>Progress</th></tr></thead>
               <tbody>
                 {ctt.map(t => {
                   const proj = db.projects.find(p => p.id === t.project_id) || { name: '?', client_id: '' }
                   const col = clientColor(db.clients, proj.client_id)
                   const dc = dlCls(t.end_date)
-                  const wn = (t.worker_ids || []).map(wid => db.workers.find(x => x.id === wid)?.name).filter(Boolean).join(', ')
+                  const role = t.coordinator_id === id ? 'Coordinator' : 'Modeller'
                   return (
                     <tr key={t.id} className="dr">
                       <td>{t.name}</td>
                       <td style={{ color: col, fontWeight: 500 }}>{proj.name}</td>
-                      <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{wn || '—'}</td>
+                      <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{role}</td>
                       <td style={{ fontSize: 12 }}>{fmtFull(t.start_date)}</td>
                       <td style={{ fontSize: 12 }} className={dc}>{fmtFull(t.end_date)}</td>
                       <td><Badge status={t.status} /></td>
@@ -181,8 +181,8 @@ function ContractorProfile({ db, id, item, onAddContact, onEditContact, onDelete
 }
 
 function WorkerProfile({ db, id, onEditProject }: { db: AppDB; id: string; onEditProject: (id: string) => void }) {
-  const wpp = db.projects.filter(p => (p.worker_ids || []).includes(id))
-  const wtt = db.tasks.filter(t => (t.worker_ids || []).includes(id))
+  const wtt = db.tasks.filter(t => (t.modeller_worker_ids || []).includes(id) || (t.coordinator_id === id && t.coordinator_type === 'worker'))
+  const wpp = [...new Set(wtt.map(t => t.project_id))].map(pid => db.projects.find(p => p.id === pid)).filter(Boolean) as typeof db.projects
   const wa = wtt.filter(t => t.status === 'active').length
   const wd2 = wtt.filter(t => t.status === 'done').length
   const wdl = wtt.filter(t => t.status === 'delayed').length
@@ -193,8 +193,8 @@ function WorkerProfile({ db, id, onEditProject }: { db: AppDB; id: string; onEdi
       <div className="pg">
         {[
           { l: 'PROJECTS', v: wpp.length },
-          { l: 'TOTAL TASKS', v: wtt.length },
-          { l: 'ACTIVE TASKS', v: wa, style: { color: 'var(--bl)' } },
+          { l: 'TOTAL MILESTONES', v: wtt.length },
+          { l: 'ACTIVE', v: wa, style: { color: 'var(--bl)' } },
           { l: 'DELAYED', v: wdl, style: { color: 'var(--rd)' } },
           { l: 'COMPLETED', v: wd2, style: { color: 'var(--gn)' } },
           { l: 'DUE THIS WEEK', v: wds, style: wds > 0 ? { color: 'var(--am)' } : {} },
@@ -224,20 +224,20 @@ function WorkerProfile({ db, id, onEditProject }: { db: AppDB; id: string; onEdi
       )}
       {wtt.length > 0 && (
         <>
-          <div className="sec-t">Tasks</div>
+          <div className="sec-t">Milestones</div>
           <div className="tw">
-            <table><thead><tr><th>Task</th><th>Project</th><th>Subcontractors</th><th>Start</th><th>Deadline</th><th>Status</th><th>Progress</th></tr></thead>
+            <table><thead><tr><th>Milestone</th><th>Project</th><th>Role</th><th>Start</th><th>Deadline</th><th>Status</th><th>Progress</th></tr></thead>
               <tbody>
                 {wtt.map(t => {
                   const proj = db.projects.find(p => p.id === t.project_id) || { name: '?', client_id: '' }
                   const col = clientColor(db.clients, proj.client_id)
                   const dc = dlCls(t.end_date)
-                  const scn = (t.contractor_ids || []).map(sid => db.contractors.find(x => x.id === sid)?.name).filter(Boolean).join(', ')
+                  const role = t.coordinator_id === id ? 'Coordinator' : 'Modeller'
                   return (
                     <tr key={t.id} className="dr">
                       <td>{t.name}</td>
                       <td style={{ color: col, fontWeight: 500 }}>{proj.name}</td>
-                      <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{scn || '—'}</td>
+                      <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{role}</td>
                       <td style={{ fontSize: 12 }}>{fmtFull(t.start_date)}</td>
                       <td style={{ fontSize: 12 }} className={dc}>{fmtFull(t.end_date)}</td>
                       <td><Badge status={t.status} /></td>

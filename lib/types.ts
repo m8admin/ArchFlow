@@ -21,10 +21,6 @@ export interface Project {
   sqm: number | null
   uses: string
   floors: number | null
-  worker_ids: string[]
-  contractor_ids: string[]
-  coordinator_id: string | null
-  coordinator_type: 'worker' | 'contractor' | null
 }
 
 export interface Task {
@@ -36,8 +32,10 @@ export interface Task {
   status: Status
   pct: number
   notes: string
-  worker_ids: string[]
-  contractor_ids: string[]
+  coordinator_id: string | null
+  coordinator_type: 'worker' | 'contractor' | null
+  modeller_worker_ids: string[]
+  modeller_contractor_ids: string[]
 }
 
 export interface Client {

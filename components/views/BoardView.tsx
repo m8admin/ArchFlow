@@ -42,7 +42,17 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
 
   function clientName(cid: string) { return db.clients.find(c => c.id === cid)?.name || '?' }
 
-  function AssignCell({ wids, cids }: { wids: string[]; cids: string[] }) {
+  function CoordinatorCell({ coordId, coordType }: { coordId: string | null; coordType: 'worker' | 'contractor' | null }) {
+    if (!coordId) return <span style={{ color: 'var(--tx3)', fontSize: 12 }}>—</span>
+    const person = coordType === 'worker'
+      ? db.workers.find(w => w.id === coordId)
+      : db.contractors.find(c => c.id === coordId)
+    if (!person) return <span style={{ color: 'var(--tx3)', fontSize: 12 }}>—</span>
+    const col = coordType === 'worker' ? workerColor(db.workers, coordId) : '#555E89'
+    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: col + '18', color: col, border: `1px solid ${col}33` }}>{person.name}</span>
+  }
+
+  function ModellerCell({ wids, cids }: { wids: string[]; cids: string[] }) {
     if (!wids.length && !cids.length) return <span style={{ color: 'var(--tx3)', fontSize: 12 }}>—</span>
     return (
       <span style={{ whiteSpace: 'normal', lineHeight: 1.7 }}>
@@ -64,7 +74,7 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
           { l: 'DELAYED', v: delayed, style: { color: 'var(--rd)' } },
           { l: 'TOTAL WORKING DAYS', v: totalWD.toLocaleString(), s: 'across all projects' },
           { l: 'AVG TYPICAL SQM', v: avgSqm ? `${avgSqm.toLocaleString()} m²` : '—' },
-          { l: 'DUE THIS WEEK', v: dueSoon, s: 'tasks', style: dueSoon > 0 ? { color: 'var(--am)' } : {} },
+          { l: 'DUE THIS WEEK', v: dueSoon, s: 'milestones', style: dueSoon > 0 ? { color: 'var(--am)' } : {} },
           { l: 'AVG PROGRESS', v: `${avg}%` },
         ].map(s => (
           <div key={s.l} className="sc">
@@ -109,7 +119,7 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
           {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         <div className="tb-r">
-          <button className="btn bsm" onClick={() => onNewTask()}>+ Add task</button>
+          <button className="btn bsm" onClick={() => onNewTask()}>+ Add milestone</button>
           <button className="btn bp bsm" onClick={onNewProject}>+ New project</button>
         </div>
       </div>
@@ -119,10 +129,10 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
         <table>
           <thead>
             <tr>
-              <th style={{ minWidth: 185 }}>Project / Task</th>
+              <th style={{ minWidth: 185 }}>Project / Milestone</th>
               <th>Client</th><th>sqm</th><th>Use</th><th>Floors</th>
               <th>Coordinator</th>
-              <th style={{ minWidth: 160 }}>Assigned</th>
+              <th style={{ minWidth: 160 }}>Modellers</th>
               <th>Start</th><th>Deadline</th><th>Status</th>
               <th style={{ minWidth: 90 }}>Progress</th><th>%</th>
               <th style={{ width: 44 }}></th>
@@ -149,19 +159,7 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
                   <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{p.sqm ? `${p.sqm.toLocaleString()} m²` : '—'}</td>
                   <td style={{ fontSize: 12, color: 'var(--tx2)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.uses || '—'}</td>
                   <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{p.floors || '—'}</td>
-                  <td style={{ fontSize: 12 }}>{
-                    p.coordinator_id
-                      ? (() => {
-                          const person = p.coordinator_type === 'worker'
-                            ? db.workers.find(w => w.id === p.coordinator_id)
-                            : db.contractors.find(c => c.id === p.coordinator_id)
-                          return person
-                            ? <span className="tag" style={{ fontSize: 11 }}>👤 {person.name}</span>
-                            : <span style={{ color: 'var(--tx3)' }}>—</span>
-                        })()
-                      : <span style={{ color: 'var(--tx3)' }}>—</span>
-                  }</td>
-                  <td style={{ maxWidth: 180 }}><AssignCell wids={p.worker_ids || []} cids={p.contractor_ids || []} /></td>
+                  <td colSpan={2}></td>
                   <td style={{ fontSize: 12 }}>{fmtFull(p.start_date)}</td>
                   <td style={{ fontSize: 12 }} className={dc}>{fmtFull(p.end_date)}</td>
                   <td><Badge status={p.status} /></td>
@@ -171,15 +169,16 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
                 </tr>,
                 ...(!isCol ? (
                   tasks.length === 0
-                    ? [<tr key={`${p.id}-empty`} className="tk"><td className="ind" colSpan={13} style={{ color: 'var(--tx3)', fontSize: 12 }}>No tasks — <button className="btn bsm" onClick={() => onNewTask(p.id)}>+ Add task</button></td></tr>]
+                    ? [<tr key={`${p.id}-empty`} className="tk"><td className="ind" colSpan={13} style={{ color: 'var(--tx3)', fontSize: 12 }}>No milestones — <button className="btn bsm" onClick={() => onNewTask(p.id)}>+ Add milestone</button></td></tr>]
                     : tasks.map(t => {
                       const tdc = dlCls(t.end_date)
                       return (
                         <tr key={t.id} className="tk">
                           <td className="ind">↪ {t.name}</td>
                           <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{clientName(p.client_id)}</td>
-                          <td colSpan={4}></td>
-                          <td style={{ maxWidth: 180 }}><AssignCell wids={t.worker_ids || []} cids={t.contractor_ids || []} /></td>
+                          <td colSpan={3}></td>
+                          <td><CoordinatorCell coordId={t.coordinator_id} coordType={t.coordinator_type} /></td>
+                          <td style={{ maxWidth: 180 }}><ModellerCell wids={t.modeller_worker_ids || []} cids={t.modeller_contractor_ids || []} /></td>
                           <td style={{ fontSize: 12 }}>{fmtFull(t.start_date)}</td>
                           <td style={{ fontSize: 12 }} className={tdc}>{fmtFull(t.end_date)}</td>
                           <td><Badge status={t.status} /></td>

@@ -20,7 +20,7 @@ export function SubView({ db, onOpenProfile }: Props) {
     <div>
       <div className="pg-t">Subcontractor workload</div>
       {db.contractors.map(sc => {
-        const tasks = db.tasks.filter(t => (t.contractor_ids || []).includes(sc.id))
+        const tasks = db.tasks.filter(t => (t.modeller_contractor_ids || []).includes(sc.id) || (t.coordinator_id === sc.id && t.coordinator_type === 'contractor'))
         const active = tasks.filter(t => t.status === 'active').length
         const done = tasks.filter(t => t.status === 'done').length
         const delayed = tasks.filter(t => t.status === 'delayed').length

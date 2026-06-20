@@ -40,15 +40,15 @@ export function DirectoryView({ db, type, onOpenProfile, onAddEntry }: Props) {
               s2 = { v: pp.filter(p => p.status === 'active').length, l: 'Active' }
               s3 = { v: ('contacts' in item && Array.isArray((item as {contacts?: unknown[]}).contacts) ? (item as {contacts: unknown[]}).contacts.length : 0), l: 'Contacts' }
             } else if (type === 'contractor') {
-              const tt = db.tasks.filter(t => (t.contractor_ids || []).includes(item.id))
-              s1 = { v: tt.length, l: 'Tasks' }
+              const tt = db.tasks.filter(t => (t.modeller_contractor_ids || []).includes(item.id) || (t.coordinator_id === item.id && t.coordinator_type === 'contractor'))
+              s1 = { v: tt.length, l: 'Milestones' }
               s2 = { v: tt.filter(t => t.status === 'active').length, l: 'Active' }
               s3 = { v: ('contacts' in item && Array.isArray((item as {contacts?: unknown[]}).contacts) ? (item as {contacts: unknown[]}).contacts.length : 0), l: 'Contacts' }
             } else {
-              const wpp = db.projects.filter(p => (p.worker_ids || []).includes(item.id))
-              const wtt = db.tasks.filter(t => (t.worker_ids || []).includes(item.id))
-              s1 = { v: wpp.length, l: 'Projects' }
-              s2 = { v: wtt.length, l: 'Tasks' }
+              const wtt = db.tasks.filter(t => (t.modeller_worker_ids || []).includes(item.id) || (t.coordinator_id === item.id && t.coordinator_type === 'worker'))
+              const wpp = new Set(wtt.map(t => t.project_id))
+              s1 = { v: wpp.size, l: 'Projects' }
+              s2 = { v: wtt.length, l: 'Milestones' }
               s3 = { v: wtt.filter(t => t.status === 'active').length, l: 'Active' }
             }
 

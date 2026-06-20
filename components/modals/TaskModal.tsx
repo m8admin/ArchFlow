@@ -19,7 +19,7 @@ interface Props {
   toast: (msg: string) => void
 }
 
-function CheckChips({ label, items, selected, onChange }: { label: string; items: { id: string; name: string }[]; selected: string[]; onChange: (ids: string[]) => void }) {
+function CheckChips({ label, items, selected, onChange }: { label: string; items: { id: string; name: string; role?: string }[]; selected: string[]; onChange: (ids: string[]) => void }) {
   if (!items.length) return null
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id])
@@ -45,8 +45,10 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
   const [status, setStatus] = useState<Status>('planning')
   const [pct, setPct] = useState(0)
   const [notes, setNotes] = useState('')
-  const [workerIds, setWorkerIds] = useState<string[]>([])
-  const [contractorIds, setContractorIds] = useState<string[]>([])
+  const [coordinatorId, setCoordinatorId] = useState<string>('')
+  const [coordinatorType, setCoordinatorType] = useState<'worker' | 'contractor'>('worker')
+  const [modellerWorkerIds, setModellerWorkerIds] = useState<string[]>([])
+  const [modellerContractorIds, setModellerContractorIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -54,40 +56,48 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
       setName(task.name); setProjectId(task.project_id)
       setStartDate(task.start_date); setEndDate(task.end_date)
       setStatus(task.status); setPct(task.pct); setNotes(task.notes || '')
-      setWorkerIds(task.worker_ids || []); setContractorIds(task.contractor_ids || [])
+      setCoordinatorId(task.coordinator_id || '')
+      setCoordinatorType(task.coordinator_type || 'worker')
+      setModellerWorkerIds(task.modeller_worker_ids || [])
+      setModellerContractorIds(task.modeller_contractor_ids || [])
     } else {
       setName(''); setProjectId(defaultProjectId || projects[0]?.id || '')
       setStartDate(todayStr()); setEndDate(dFrom(14))
       setStatus('planning'); setPct(0); setNotes('')
-      setWorkerIds([]); setContractorIds([])
+      setCoordinatorId(''); setCoordinatorType('worker')
+      setModellerWorkerIds([]); setModellerContractorIds([])
     }
   }, [task, open, defaultProjectId, projects])
 
   async function handleSave() {
-    if (!name.trim()) { toast('Task name required.'); return }
+    if (!name.trim()) { toast('Milestone name required.'); return }
     if (!projectId) { toast('Project required.'); return }
     setSaving(true)
     await onSave({
       id: task?.id, name: name.trim(), project_id: projectId,
       start_date: startDate, end_date: endDate,
       status, pct: Math.min(100, Math.max(0, pct)),
-      notes: notes.trim(), worker_ids: workerIds, contractor_ids: contractorIds,
+      notes: notes.trim(),
+      coordinator_id: coordinatorId || null,
+      coordinator_type: coordinatorId ? coordinatorType : null,
+      modeller_worker_ids: modellerWorkerIds,
+      modeller_contractor_ids: modellerContractorIds,
     })
     setSaving(false)
   }
 
   async function handleDelete() {
     if (!task || !onDelete) return
-    if (!confirm('Delete this task?')) return
+    if (!confirm('Delete this milestone?')) return
     await onDelete(task.id)
     onClose()
   }
 
   return (
-    <Modal title={task ? 'Edit task' : 'New task'} open={open} onClose={onClose}>
+    <Modal title={task ? 'Edit milestone' : 'New milestone'} open={open} onClose={onClose}>
       <div className="fg">
         <div className="fr ff">
-          <label>Task name *</label>
+          <label>Milestone name *</label>
           <input value={name} onChange={e => setName(e.target.value)} />
         </div>
         <div className="fr ff">
@@ -114,8 +124,39 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
           <label>Progress (%)</label>
           <input type="number" min={0} max={100} value={pct} onChange={e => setPct(parseInt(e.target.value) || 0)} />
         </div>
-        <CheckChips label="Assign workers" items={workers} selected={workerIds} onChange={setWorkerIds} />
-        <CheckChips label="Assign subcontractors" items={contractors} selected={contractorIds} onChange={setContractorIds} />
+
+        <div className="sect-divider">Assignments</div>
+
+        {/* Coordinator */}
+        <div className="fr ff">
+          <label>Coordinator (Project Manager)</label>
+          <select
+            value={coordinatorId ? `${coordinatorType}:${coordinatorId}` : ''}
+            onChange={e => {
+              const val = e.target.value
+              if (!val) { setCoordinatorId(''); return }
+              const [type, id] = val.split(':')
+              setCoordinatorType(type as 'worker' | 'contractor')
+              setCoordinatorId(id)
+            }}
+          >
+            <option value="">— None —</option>
+            {workers.length > 0 && <option disabled>── Workers ──</option>}
+            {workers.map(w => (
+              <option key={w.id} value={`worker:${w.id}`}>{w.name}{w.role ? ` (${w.role})` : ''}</option>
+            ))}
+            {contractors.length > 0 && <option disabled>── Subcontractors ──</option>}
+            {contractors.map(c => (
+              <option key={c.id} value={`contractor:${c.id}`}>{c.name}{c.role ? ` (${c.role})` : ''}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Modellers — workers */}
+        <CheckChips label="Modellers (Workers)" items={workers} selected={modellerWorkerIds} onChange={setModellerWorkerIds} />
+        {/* Modellers — subcontractors */}
+        <CheckChips label="Modellers (Subcontractors)" items={contractors} selected={modellerContractorIds} onChange={setModellerContractorIds} />
+
         <div className="fr ff">
           <label>Notes</label>
           <textarea rows={2} style={{ width: '100%', resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />
@@ -124,7 +165,7 @@ export function TaskModal({ open, task, defaultProjectId, projects, contractors,
       <div className="fa">
         <div>
           {task && onDelete && (
-            <button className="btn bd-btn bsm" onClick={handleDelete}>Delete task</button>
+            <button className="btn bd-btn bsm" onClick={handleDelete}>Delete milestone</button>
           )}
         </div>
         <div className="fa-r">

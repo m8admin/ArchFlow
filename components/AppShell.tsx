@@ -67,13 +67,13 @@ export default function AppShell() {
   async function handleSaveTask(data: Omit<Task, 'id'> & { id?: string }) {
     await saveTask(data)
     setModal({ kind: 'none' })
-    toast(data.id ? 'Task updated' : 'Task added')
+    toast(data.id ? 'Milestone updated' : 'Milestone added')
   }
 
   async function handleDeleteTask(id: string) {
     await deleteTask(id)
     setModal({ kind: 'none' })
-    toast('Task deleted')
+    toast('Milestone deleted')
   }
 
   // ── Directory save ──────────────────────────────────────────────────────────
@@ -272,7 +272,7 @@ export default function AppShell() {
       {modal.kind === 'project' && (
         <ProjectModal
           open={true} project={modal.project}
-          clients={db.clients} contractors={db.contractors} workers={db.workers}
+          clients={db.clients}
           onSave={handleSaveProject}
           onDelete={handleDeleteProject}
           onClose={() => setModal({ kind: 'none' })}

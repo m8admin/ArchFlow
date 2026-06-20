@@ -181,7 +181,7 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
                       const subtasks = db.tasks.filter(t => t.parent_milestone_id === m.id)
                       return [
                         <tr key={m.id} className="tk">
-                          <td className="ind" style={{ fontWeight: 600 }}>↪ {m.name}{m.modeller_hours ? <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 400, marginLeft: 6 }}>{m.modeller_hours}h</span> : null}</td>
+                          <td className="ind" style={{ fontWeight: 600 }}>↪ <span className="pnc" onClick={() => onEditTask(m.id)}>{m.name}</span>{m.modeller_hours ? <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 400, marginLeft: 6 }}>{m.modeller_hours}h</span> : null}</td>
                           <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{clientName(p.client_id)}</td>
                           <td colSpan={3}></td>
                           <td><CoordinatorCell coordId={m.coordinator_id} coordType={m.coordinator_type} /></td>
@@ -191,9 +191,11 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
                           <td><Badge status={m.status} /></td>
                           <td><ProgressBar status={m.status} pct={m.pct} /></td>
                           <td style={{ fontSize: 12, color: 'var(--tx3)' }}>{m.pct}%</td>
-                          <td style={{ display: 'flex', gap: 2 }}>
-                            <button className="bi" onClick={() => onEditTask(m.id)}>✎</button>
-                            <button className="bi" title="Add task" onClick={() => onNewSubtask(p.id, m.id)}>+</button>
+                          <td>
+                            <div style={{ display: 'flex', gap: 2 }}>
+                              <button className="bi" onClick={() => onEditTask(m.id)}>✎</button>
+                              <button className="bi" title="Add task" onClick={() => onNewSubtask(p.id, m.id)}>+</button>
+                            </div>
                           </td>
                         </tr>,
                         ...subtasks.map(st => {

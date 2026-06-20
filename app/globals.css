@@ -100,6 +100,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* Badges */
 .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
 .b-planning { background: var(--pu-bg); color: var(--pu); }
+.b-pending  { background: #F5F5F5; color: #9E9E9E; }
 .b-active   { background: var(--bl-bg); color: var(--bl-tx); }
 .b-review   { background: var(--am-bg); color: var(--am); }
 .b-done     { background: var(--gn-bg); color: var(--gn); }
@@ -109,6 +110,7 @@ tbody tr:last-child td { border-bottom: none; }
 .bw { height: 9px; background: var(--sf2); border-radius: 20px; overflow: hidden; min-width: 90px; }
 .bfill { height: 100%; border-radius: 20px; transition: width .3s; }
 .bfill.planning { background: #7C6FF7; }
+.bfill.pending  { background: #9E9E9E; }
 .bfill.active   { background: #2B6BE8; }
 .bfill.review   { background: #D4900A; }
 .bfill.done     { background: #1A7A4A; }

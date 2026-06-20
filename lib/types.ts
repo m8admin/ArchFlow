@@ -1,4 +1,4 @@
-export type Status = 'planning' | 'active' | 'review' | 'done' | 'delayed'
+export type Status = 'planning' | 'pending' | 'active' | 'review' | 'done' | 'delayed'
 
 export interface Contact {
   id: string
@@ -78,6 +78,7 @@ export interface AppDB {
 
 export const STATUS_META: Record<Status, { label: string; col: string; bg: string }> = {
   planning: { label: 'Planning', col: '#7C6FF7', bg: '#EDE7F6' },
+  pending:  { label: 'Pending',  col: '#9E9E9E', bg: '#F5F5F5' },
   active:   { label: 'Active',   col: '#2B6BE8', bg: '#EEF3FD' },
   review:   { label: 'Review',   col: '#D4900A', bg: '#FEF3DC' },
   done:     { label: 'Done',     col: '#1A7A4A', bg: '#E8F5EE' },

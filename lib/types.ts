@@ -22,6 +22,9 @@ export interface Project {
   architect: string
   bim_manager: string
   revit_version: string
+  city: string
+  address: string
+  drawings_platform: string
 }
 
 export interface Task {

@@ -26,6 +26,9 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
   const [architect, setArchitect] = useState('')
   const [bimManager, setBimManager] = useState('')
   const [revitVersion, setRevitVersion] = useState('')
+  const [city, setCity] = useState('')
+  const [address, setAddress] = useState('')
+  const [drawingsPlatform, setDrawingsPlatform] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -42,11 +45,15 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       setArchitect(project.architect || '')
       setBimManager(project.bim_manager || '')
       setRevitVersion(project.revit_version || '')
+      setCity(project.city || '')
+      setAddress(project.address || '')
+      setDrawingsPlatform(project.drawings_platform || '')
       setNotes(project.notes || '')
     } else {
       setName(''); setClientId(clients[0]?.id || ''); setNewClient('')
       setSqm(''); setFloors(''); setBuildings(''); setUses(''); setDeveloper('')
-      setArchitect(''); setBimManager(''); setRevitVersion(''); setNotes('')
+      setArchitect(''); setBimManager(''); setRevitVersion('')
+      setCity(''); setAddress(''); setDrawingsPlatform(''); setNotes('')
     }
   }, [project, open, clients])
 
@@ -64,7 +71,9 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       buildings: buildings ? parseInt(buildings) : null,
       uses: uses.trim(), developer: developer.trim(),
       architect: architect.trim(), bim_manager: bimManager.trim(),
-      revit_version: revitVersion.trim(), notes: notes.trim(),
+      revit_version: revitVersion.trim(),
+      city: city.trim(), address: address.trim(),
+      drawings_platform: drawingsPlatform.trim(), notes: notes.trim(),
     })
     setSaving(false)
   }
@@ -128,6 +137,18 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
         <div className="fr ff">
           <label>Revit Version</label>
           <input value={revitVersion} onChange={e => setRevitVersion(e.target.value)} placeholder="e.g. Revit 2024" />
+        </div>
+        <div className="fr">
+          <label>City</label>
+          <input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Tel Aviv" />
+        </div>
+        <div className="fr">
+          <label>Address</label>
+          <input value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g. 123 Main St" />
+        </div>
+        <div className="fr ff">
+          <label>Drawings Platform</label>
+          <input value={drawingsPlatform} onChange={e => setDrawingsPlatform(e.target.value)} placeholder="e.g. AutoCAD, Revit, BIM 360" />
         </div>
         <div className="fr ff">
           <label>Notes</label>

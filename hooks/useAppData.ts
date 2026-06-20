@@ -45,6 +45,9 @@ export function useAppData() {
       architect: data.architect,
       bim_manager: data.bim_manager,
       revit_version: data.revit_version,
+      city: data.city,
+      address: data.address,
+      drawings_platform: data.drawings_platform,
     }
     if (data.id) {
       const { error } = await supabase.from('projects').update(payload).eq('id', data.id)

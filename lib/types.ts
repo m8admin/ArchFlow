@@ -17,7 +17,11 @@ export interface Project {
   sqm: number | null
   uses: string
   floors: number | null
+  buildings: number | null
   developer: string
+  architect: string
+  bim_manager: string
+  revit_version: string
 }
 
 export interface Task {

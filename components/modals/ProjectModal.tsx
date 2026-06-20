@@ -20,8 +20,12 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
   const [newClient, setNewClient] = useState('')
   const [sqm, setSqm] = useState('')
   const [floors, setFloors] = useState('')
+  const [buildings, setBuildings] = useState('')
   const [uses, setUses] = useState('')
   const [developer, setDeveloper] = useState('')
+  const [architect, setArchitect] = useState('')
+  const [bimManager, setBimManager] = useState('')
+  const [revitVersion, setRevitVersion] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -32,12 +36,17 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       setNewClient('')
       setSqm(project.sqm ? String(project.sqm) : '')
       setFloors(project.floors ? String(project.floors) : '')
+      setBuildings(project.buildings ? String(project.buildings) : '')
       setUses(project.uses || '')
       setDeveloper(project.developer || '')
+      setArchitect(project.architect || '')
+      setBimManager(project.bim_manager || '')
+      setRevitVersion(project.revit_version || '')
       setNotes(project.notes || '')
     } else {
       setName(''); setClientId(clients[0]?.id || ''); setNewClient('')
-      setSqm(''); setFloors(''); setUses(''); setDeveloper(''); setNotes('')
+      setSqm(''); setFloors(''); setBuildings(''); setUses(''); setDeveloper('')
+      setArchitect(''); setBimManager(''); setRevitVersion(''); setNotes('')
     }
   }, [project, open, clients])
 
@@ -52,7 +61,10 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       name: name.trim(), client_id: cid,
       sqm: sqm ? parseInt(sqm) : null,
       floors: floors ? parseInt(floors) : null,
-      uses: uses.trim(), developer: developer.trim(), notes: notes.trim(),
+      buildings: buildings ? parseInt(buildings) : null,
+      uses: uses.trim(), developer: developer.trim(),
+      architect: architect.trim(), bim_manager: bimManager.trim(),
+      revit_version: revitVersion.trim(), notes: notes.trim(),
     })
     setSaving(false)
   }
@@ -93,6 +105,10 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
           <label>Number of typical floors</label>
           <input type="number" min={0} value={floors} onChange={e => setFloors(e.target.value)} placeholder="e.g. 12" />
         </div>
+        <div className="fr">
+          <label>Number of buildings</label>
+          <input type="number" min={0} value={buildings} onChange={e => setBuildings(e.target.value)} placeholder="e.g. 3" />
+        </div>
         <div className="fr ff">
           <label>Uses in project</label>
           <input value={uses} onChange={e => setUses(e.target.value)} placeholder="e.g. Residential, Commercial" />
@@ -100,6 +116,18 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
         <div className="fr ff">
           <label>Construction Developer</label>
           <input value={developer} onChange={e => setDeveloper(e.target.value)} placeholder="e.g. Skyline Developers" />
+        </div>
+        <div className="fr">
+          <label>Architect</label>
+          <input value={architect} onChange={e => setArchitect(e.target.value)} placeholder="e.g. John Smith" />
+        </div>
+        <div className="fr">
+          <label>BIM Manager</label>
+          <input value={bimManager} onChange={e => setBimManager(e.target.value)} placeholder="e.g. Jane Doe" />
+        </div>
+        <div className="fr ff">
+          <label>Revit Version</label>
+          <input value={revitVersion} onChange={e => setRevitVersion(e.target.value)} placeholder="e.g. Revit 2024" />
         </div>
         <div className="fr ff">
           <label>Notes</label>

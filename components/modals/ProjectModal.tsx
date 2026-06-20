@@ -21,6 +21,7 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
   const [sqm, setSqm] = useState('')
   const [floors, setFloors] = useState('')
   const [uses, setUses] = useState('')
+  const [developer, setDeveloper] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -32,10 +33,11 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       setSqm(project.sqm ? String(project.sqm) : '')
       setFloors(project.floors ? String(project.floors) : '')
       setUses(project.uses || '')
+      setDeveloper(project.developer || '')
       setNotes(project.notes || '')
     } else {
       setName(''); setClientId(clients[0]?.id || ''); setNewClient('')
-      setSqm(''); setFloors(''); setUses(''); setNotes('')
+      setSqm(''); setFloors(''); setUses(''); setDeveloper(''); setNotes('')
     }
   }, [project, open, clients])
 
@@ -50,7 +52,7 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       name: name.trim(), client_id: cid,
       sqm: sqm ? parseInt(sqm) : null,
       floors: floors ? parseInt(floors) : null,
-      uses: uses.trim(), notes: notes.trim(),
+      uses: uses.trim(), developer: developer.trim(), notes: notes.trim(),
     })
     setSaving(false)
   }
@@ -94,6 +96,10 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
         <div className="fr ff">
           <label>Uses in project</label>
           <input value={uses} onChange={e => setUses(e.target.value)} placeholder="e.g. Residential, Commercial" />
+        </div>
+        <div className="fr ff">
+          <label>Construction Developer</label>
+          <input value={developer} onChange={e => setDeveloper(e.target.value)} placeholder="e.g. Skyline Developers" />
         </div>
         <div className="fr ff">
           <label>Notes</label>

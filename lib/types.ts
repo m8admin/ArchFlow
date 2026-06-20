@@ -17,6 +17,7 @@ export interface Project {
   sqm: number | null
   uses: string
   floors: number | null
+  developer: string
 }
 
 export interface Task {

@@ -52,6 +52,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
   const [status, setStatus] = useState<Status>('planning')
   const [pct, setPct] = useState(0)
   const [notes, setNotes] = useState('')
+  const [pinpoints, setPinpoints] = useState<string[]>([''])
   const [coordinatorId, setCoordinatorId] = useState<string>('')
   const [coordinatorType, setCoordinatorType] = useState<'worker' | 'contractor'>('worker')
   const [modellerWorkerIds, setModellerWorkerIds] = useState<string[]>([])
@@ -65,6 +66,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
       setParentMilestoneId(task.parent_milestone_id || '')
       setStartDate(task.start_date); setEndDate(task.end_date)
       setStatus(task.status); setPct(task.pct); setNotes(task.notes || '')
+      setPinpoints(task.pinpoints?.length ? task.pinpoints : [''])
       setCoordinatorId(task.coordinator_id || '')
       setCoordinatorType(task.coordinator_type || 'worker')
       setModellerWorkerIds(task.modeller_worker_ids || [])
@@ -75,6 +77,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
       setParentMilestoneId(defaultMilestoneId || '')
       setStartDate(todayStr()); setEndDate(dFrom(14))
       setStatus('planning'); setPct(0); setNotes('')
+      setPinpoints([''])
       setCoordinatorId(''); setCoordinatorType('worker')
       setModellerWorkerIds([]); setModellerContractorIds([])
       setModellerHours('')
@@ -94,6 +97,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
       start_date: startDate, end_date: endDate,
       status, pct: Math.min(100, Math.max(0, pct)),
       notes: notes.trim(),
+      pinpoints: pinpoints.filter(p => p.trim()),
       coordinator_id: coordinatorId || null,
       coordinator_type: coordinatorId ? coordinatorType : null,
       modeller_worker_ids: modellerWorkerIds,
@@ -191,6 +195,27 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
         <CheckChips label="Modellers (Workers)" items={workers} selected={modellerWorkerIds} onChange={setModellerWorkerIds} />
         <CheckChips label="Modellers (Subcontractors)" items={contractors} selected={modellerContractorIds} onChange={setModellerContractorIds} />
 
+        <div className="sect-divider">Details</div>
+        <div className="fr ff">
+          <label>Pinpoints</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {pinpoints.map((pp, i) => (
+              <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--tx3)', minWidth: 22, textAlign: 'right' }}>{i + 1}.</span>
+                <input
+                  style={{ flex: 1 }}
+                  value={pp}
+                  onChange={e => { const a = [...pinpoints]; a[i] = e.target.value; setPinpoints(a) }}
+                  placeholder={`Detail ${i + 1}`}
+                />
+                {pinpoints.length > 1 && (
+                  <button type="button" className="bi bxs" onClick={() => setPinpoints(pinpoints.filter((_, j) => j !== i))}>−</button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button type="button" className="btn bxs" style={{ marginTop: 5, width: 'fit-content' }} onClick={() => setPinpoints([...pinpoints, ''])}>+ Add pinpoint</button>
+        </div>
         <div className="fr ff">
           <label>Notes</label>
           <textarea rows={2} style={{ width: '100%', resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />

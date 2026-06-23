@@ -94,7 +94,7 @@ export const STATUS_META: Record<Status, { label: string; col: string; bg: strin
   pending:  { label: 'Pending',  col: '#9E9E9E', bg: '#F5F5F5' },
   active:   { label: 'Active',   col: '#2B6BE8', bg: '#EEF3FD' },
   review:   { label: 'Review',   col: '#D4900A', bg: '#FEF3DC' },
-  hold:     { label: 'Hold',     col: '#E65100', bg: '#FFF3E0' },
+  hold:     { label: 'Hold',     col: '#757575', bg: '#EEEEEE' },
   done:     { label: 'Done',     col: '#1A7A4A', bg: '#E8F5EE' },
   delayed:  { label: 'Delayed',  col: '#B83232', bg: '#FDEDED' },
 }

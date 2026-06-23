@@ -6,7 +6,7 @@ import { STATUS_META } from '@/lib/types'
 import { clientColor, fmt, pd, ddiff, wkn, projectAggregates } from '@/lib/utils'
 
 const BAR_COL: Record<Status, string> = {
-  planning: '#7C6FF7', pending: '#9E9E9E', active: '#2B6BE8', review: '#D4900A', done: '#1A7A4A', delayed: '#B83232',
+  planning: '#7C6FF7', pending: '#9E9E9E', active: '#2B6BE8', review: '#D4900A', hold: '#E65100', done: '#1A7A4A', delayed: '#B83232',
 }
 
 interface Props {

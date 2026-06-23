@@ -76,15 +76,24 @@ export function workerColor(workers: { id: string }[], wid: string): string {
 import type { Task, Status } from './types'
 
 export function projectAggregates(allTasks: Task[]): { start: string; end: string; status: Status; pct: number } {
-  const milestones = allTasks.filter(t => (t.kind || 'milestone') === 'milestone' && !t.parent_milestone_id)
-  if (!milestones.length) return { start: '', end: '', status: 'planning', pct: 0 }
-  const starts = milestones.map(m => m.start_date).sort()
-  const ends = milestones.map(m => m.end_date).sort()
-  const pct = Math.round(milestones.reduce((a, m) => a + m.pct, 0) / milestones.length)
+  const topLevel = allTasks.filter(t => !t.parent_milestone_id)
+  if (!topLevel.length) return { start: '', end: '', status: 'planning', pct: 0 }
+  const starts = topLevel.map(m => m.start_date).sort()
+  const ends = topLevel.map(m => m.end_date).sort()
+  const milestones = topLevel.filter(t => (t.kind || 'milestone') === 'milestone')
+  const pct = milestones.length
+    ? Math.round(milestones.reduce((a, m) => a + m.pct, 0) / milestones.length)
+    : Math.round(topLevel.reduce((a, t) => a + t.pct, 0) / topLevel.length)
+
+  // Project status = the most prominent active status across all items
+  const all = allTasks
   let status: Status = 'planning'
-  if (milestones.every(m => m.status === 'done')) status = 'done'
-  else if (milestones.some(m => m.status === 'delayed')) status = 'delayed'
-  else if (milestones.some(m => m.status === 'active')) status = 'active'
-  else if (milestones.some(m => m.status === 'review')) status = 'review'
+  if (all.length && all.every(t => t.status === 'done')) status = 'done'
+  else if (all.some(t => t.status === 'delayed')) status = 'delayed'
+  else if (all.some(t => t.status === 'hold')) status = 'hold'
+  else if (all.some(t => t.status === 'active')) status = 'active'
+  else if (all.some(t => t.status === 'review')) status = 'review'
+  else if (all.some(t => t.status === 'pending')) status = 'pending'
+
   return { start: starts[0], end: ends[ends.length - 1], status, pct }
 }

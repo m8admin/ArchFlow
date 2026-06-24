@@ -77,7 +77,8 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
 
   const totalDays = ddiff(minD, maxD) || 1
   const pct = (ds: string) => Math.max(0, Math.min(100, ddiff(minD, pd(ds)) / totalDays * 100))
-  const bw = (s: string, e: string) => Math.max(0.4, pct(e) - pct(s))
+  const oneDayPct = 100 / totalDays
+  const bw = (s: string, e: string) => Math.max(0.4, pct(e) - pct(s) + oneDayPct)
   const tickStep = totalDays > 300 ? 60 : totalDays > 90 ? 14 : totalDays > 30 ? 7 : 1
   const tL = pct(T)
 
@@ -86,8 +87,8 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
   while (d <= maxD) {
     const left = pct(fmt(d))
     const label = tickStep >= 14
-      ? d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
-      : tickStep === 7 ? `W${wkn(d)}` : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+      ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
+      : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
     ticks.push({ left, label })
     d.setDate(d.getDate() + tickStep)
   }

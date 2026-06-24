@@ -65,30 +65,50 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
     })
   })
 
-  if (zoom === '3month') {
+  // Set date range and tick step per zoom level
+  let tickStep: number
+  if (zoom === 'day') {
+    minD.setDate(minD.getDate() - 1); maxD.setDate(maxD.getDate() + 1)
+    tickStep = 1
+  } else if (zoom === 'week') {
+    minD.setDate(minD.getDate() - 3); maxD.setDate(maxD.getDate() + 3)
+    tickStep = 7
+  } else if (zoom === 'month') {
+    minD.setDate(minD.getDate() - 7); maxD.setDate(maxD.getDate() + 7)
+    tickStep = 14
+  } else if (zoom === '3month') {
     minD = new Date(todayDate); minD.setDate(1); minD.setDate(minD.getDate() - 7)
     maxD = new Date(minD); maxD.setMonth(maxD.getMonth() + 3); maxD.setDate(maxD.getDate() + 14)
-  } else if (zoom === 'year') {
+    tickStep = 30
+  } else {
     minD = new Date(todayDate.getFullYear(), 0, 1)
     maxD = new Date(todayDate.getFullYear(), 11, 31)
-  } else {
-    minD.setDate(minD.getDate() - 3); maxD.setDate(maxD.getDate() + 3)
+    tickStep = 60
   }
 
   const totalDays = ddiff(minD, maxD) || 1
-  const pct = (ds: string) => Math.max(0, Math.min(100, ddiff(minD, pd(ds)) / totalDays * 100))
+  const pct = (ds: string) => {
+    const diff = ddiff(minD, pd(ds))
+    return Math.max(0, Math.min(100, diff / totalDays * 100))
+  }
   const oneDayPct = 100 / totalDays
-  const bw = (s: string, e: string) => Math.max(0.4, pct(e) - pct(s) + oneDayPct)
-  const tickStep = totalDays > 300 ? 60 : totalDays > 90 ? 14 : totalDays > 30 ? 7 : 1
+  const bw = (s: string, e: string) => Math.max(oneDayPct, pct(e) - pct(s) + oneDayPct)
   const tL = pct(T)
 
   const ticks: { left: number; label: string }[] = []
   const d = new Date(minD)
   while (d <= maxD) {
     const left = pct(fmt(d))
-    const label = tickStep >= 14
-      ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
-      : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    let label: string
+    if (zoom === 'day') {
+      label = d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })
+    } else if (zoom === 'week') {
+      label = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    } else if (zoom === 'month') {
+      label = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    } else {
+      label = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
+    }
     ticks.push({ left, label })
     d.setDate(d.getDate() + tickStep)
   }

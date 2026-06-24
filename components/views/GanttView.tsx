@@ -68,14 +68,18 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
   // Set date range and tick step per zoom level
   let tickStep: number
   if (zoom === 'day') {
-    minD.setDate(minD.getDate() - 1); maxD.setDate(maxD.getDate() + 1)
+    // Show 2 weeks centered on today
+    minD = new Date(todayDate); minD.setDate(minD.getDate() - 7)
+    maxD = new Date(todayDate); maxD.setDate(maxD.getDate() + 7)
     tickStep = 1
   } else if (zoom === 'week') {
     minD.setDate(minD.getDate() - 3); maxD.setDate(maxD.getDate() + 3)
     tickStep = 7
   } else if (zoom === 'month') {
-    minD.setDate(minD.getDate() - 7); maxD.setDate(maxD.getDate() + 7)
-    tickStep = 14
+    // Show the full current month
+    minD = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
+    maxD = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0)
+    tickStep = 1
   } else if (zoom === '3month') {
     minD = new Date(todayDate); minD.setDate(1); minD.setDate(minD.getDate() - 7)
     maxD = new Date(minD); maxD.setMonth(maxD.getMonth() + 3); maxD.setDate(maxD.getDate() + 14)
@@ -101,11 +105,11 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
     const left = pct(fmt(d))
     let label: string
     if (zoom === 'day') {
-      label = d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })
+      label = d.toLocaleDateString('en-GB', { day: '2-digit' })
     } else if (zoom === 'week') {
       label = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
     } else if (zoom === 'month') {
-      label = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+      label = d.toLocaleDateString('en-GB', { day: '2-digit' })
     } else {
       label = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
     }
@@ -152,6 +156,9 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
           <option value="">All clients</option>
           {db.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 500, padding: '4px 10px', background: 'var(--sf2)', borderRadius: 'var(--r)', border: '1px solid var(--bd)' }}>
+          Today: {todayDate.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+        </span>
         <div className="tb-r"><button className="btn bp bsm" onClick={onNewProject}>+ New project</button></div>
       </div>
 

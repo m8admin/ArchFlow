@@ -123,7 +123,7 @@ export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, o
                   const over = planned > 0 && actual > planned
                   return (
                     <tr key={m.id} className="pr">
-                      <td style={{ fontWeight: 500 }}><span className="pnc" onClick={() => onEditMilestone(m.id)}>{m.name}</span></td>
+                      <td style={{ fontWeight: 500 }}>{m.phase && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '2px 8px', borderRadius: 12, marginRight: 6 }}>{m.phase}</span>}<span className="pnc" onClick={() => onEditMilestone(m.id)}>{m.name}</span></td>
                       <td><Badge status={m.status} /></td>
                       <td><ProgressBar status={m.status} pct={m.pct} /></td>
                       <td style={{ fontSize: 12 }}>{planned ? `${planned}h` : '—'}</td>

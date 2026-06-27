@@ -65,7 +65,7 @@ export function SubView({ db, onOpenProfile }: Props) {
                     const dc = dlCls(t.end_date)
                     return (
                       <tr key={t.id} style={{ borderTop: '1px solid var(--bd)' }}>
-                        <td style={{ padding: '5px 8px' }}>{t.name}</td>
+                        <td style={{ padding: '5px 8px' }}>{t.phase && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '1px 5px', borderRadius: 8, marginRight: 4 }}>{t.phase}</span>}{t.name}</td>
                         <td style={{ padding: '5px 8px', color: col, fontWeight: 500 }}>{proj.name}</td>
                         <td style={{ padding: '5px 8px', textAlign: 'center' }} className={dc}>{fmtFull(t.end_date)}</td>
                         <td style={{ padding: '5px 8px', textAlign: 'center' }}><Badge status={t.status} /></td>

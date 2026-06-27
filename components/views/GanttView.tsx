@@ -211,7 +211,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                   const subtasks = db.tasks.filter(t => t.parent_milestone_id === m.id && t.kind === 'task')
                   return [
                     <div key={m.id} className="grow">
-                      <div className="glc g-tl" style={{ fontWeight: 600 }}>↪ {m.name}</div>
+                      <div className="glc g-tl" style={{ fontWeight: 600 }}>↪ {m.phase && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '1px 5px', borderRadius: 8, marginRight: 4 }}>{m.phase}</span>}{m.name}</div>
                       <div className="gbc">
                         <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .2, left: `${tL}%`, pointerEvents: 'none' }} />
                         <div style={{ position: 'relative', width: '100%', height: 15 }}>

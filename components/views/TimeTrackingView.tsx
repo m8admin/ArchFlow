@@ -51,7 +51,7 @@ export function TimeTrackingView({ db, entries, hoursByTask, onNewEntry, onEditE
     const task = db.tasks.find(t => t.id === e.task_id)
     if (!task) return { taskName: '?', projectName: '?' }
     const project = db.projects.find(p => p.id === task.project_id)
-    return { taskName: task.name, projectName: project?.name || '?', kind: task.kind }
+    return { taskName: task.name, projectName: project?.name || '?', kind: task.kind, phase: task.phase }
   }
 
   // Planned vs Actual report
@@ -113,12 +113,13 @@ export function TimeTrackingView({ db, entries, hoursByTask, onNewEntry, onEditE
             {!filtered.length ? (
               <tr className="er"><td colSpan={7}>No time entries{filterProject || filterWorker ? ' match filters' : ''} — <button className="btn bsm" onClick={onNewEntry}>+ Log time</button></td></tr>
             ) : filtered.map(e => {
-              const { taskName, projectName, kind } = taskInfo(e)
+              const { taskName, projectName, kind, phase } = taskInfo(e)
               return (
                 <tr key={e.id} className="pr" style={{ cursor: 'pointer' }} onClick={() => onEditEntry(e)}>
                   <td style={{ fontSize: 12 }}>{fmtFull(e.date)}</td>
                   <td style={{ fontSize: 12, fontWeight: 500 }}>{projectName}</td>
                   <td style={{ fontSize: 12 }}>
+                    {phase && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '1px 5px', borderRadius: 8, marginRight: 4 }}>{phase}</span>}
                     {kind === 'task' && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--bl-tx)', background: 'var(--bl-bg)', padding: '1px 5px', borderRadius: 10, marginRight: 4 }}>Task</span>}
                     {taskName}
                   </td>

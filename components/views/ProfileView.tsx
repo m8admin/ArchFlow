@@ -165,7 +165,7 @@ function ContractorProfile({ db, id, item, onAddContact, onEditContact, onDelete
                   const role = t.coordinator_id === id ? 'Coordinator' : 'Modeller'
                   return (
                     <tr key={t.id} className="dr">
-                      <td>{t.name}</td>
+                      <td>{t.phase && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '1px 5px', borderRadius: 8, marginRight: 4 }}>{t.phase}</span>}{t.name}</td>
                       <td style={{ color: col, fontWeight: 500 }}>{proj.name}</td>
                       <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{role}</td>
                       <td style={{ fontSize: 12 }}>{fmtFull(t.start_date)}</td>
@@ -240,7 +240,7 @@ function WorkerProfile({ db, id, onEditProject }: { db: AppDB; id: string; onEdi
                   const role = t.coordinator_id === id ? 'Coordinator' : 'Modeller'
                   return (
                     <tr key={t.id} className="dr">
-                      <td>{t.name}</td>
+                      <td>{t.phase && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '1px 5px', borderRadius: 8, marginRight: 4 }}>{t.phase}</span>}{t.name}</td>
                       <td style={{ color: col, fontWeight: 500 }}>{proj.name}</td>
                       <td style={{ fontSize: 12, color: 'var(--tx2)' }}>{role}</td>
                       <td style={{ fontSize: 12 }}>{fmtFull(t.start_date)}</td>

@@ -20,6 +20,7 @@ interface Props {
   onDelete?: (id: string) => Promise<void>
   onClose: () => void
   toast: (msg: string) => void
+  isAdmin?: boolean
 }
 
 function CheckChips({ label, items, selected, onChange }: { label: string; items: { id: string; name: string }[]; selected: string[]; onChange: (ids: string[]) => void }) {
@@ -40,7 +41,7 @@ function CheckChips({ label, items, selected, onChange }: { label: string; items
   )
 }
 
-export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestoneId, projects, milestones, contractors, workers, onSave, onDelete, onClose, toast }: Props) {
+export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestoneId, projects, milestones, contractors, workers, onSave, onDelete, onClose, toast, isAdmin }: Props) {
   const isMilestone = mode === 'milestone'
   const label = isMilestone ? 'Milestone' : 'Task'
 
@@ -158,8 +159,8 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
           <input type="number" min={0} max={100} value={pct} onChange={e => setPct(parseInt(e.target.value) || 0)} />
         </div>
 
-        {/* Modeller hours - milestones only */}
-        {isMilestone && (
+        {/* Modeller hours - milestones only, admin only */}
+        {isMilestone && isAdmin && (
           <div className="fr ff">
             <label>Total modeller hours</label>
             <input type="number" min={0} step="0.5" value={modellerHours} onChange={e => setModellerHours(e.target.value)} placeholder="e.g. 120" />

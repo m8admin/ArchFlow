@@ -327,7 +327,7 @@ export default function AppShell() {
           onSave={handleSaveTask}
           onDelete={handleDeleteTask}
           onClose={() => setModal({ kind: 'none' })}
-          toast={toast}
+          toast={toast} isAdmin={isAdmin}
         />
       )}
       {modal.kind === 'subtask' && (
@@ -337,7 +337,7 @@ export default function AppShell() {
           onSave={handleSaveTask}
           onDelete={handleDeleteTask}
           onClose={() => setModal({ kind: 'none' })}
-          toast={toast}
+          toast={toast} isAdmin={isAdmin}
         />
       )}
       {modal.kind === 'dir' && (

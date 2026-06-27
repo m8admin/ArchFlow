@@ -173,12 +173,7 @@ export default function AppShell() {
     <div className="shell">
       {/* Topbar */}
       <div className="topbar">
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-          <div className="logo">Arch<span>Flow</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: 'var(--tx3)', letterSpacing: '.02em' }}>
-            by <img src="/m8-logo.svg" alt="M8" style={{ height: 28, verticalAlign: 'middle' }} />
-          </div>
-        </div>
+        <img src="/FLOW logo.png" alt="ArchFlow" style={{ height: 36 }} />
         <div className="tp-r">
           {/* Export dropdown */}
           <div className={`ew${exportOpen ? ' open' : ''}`}>

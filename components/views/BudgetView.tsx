@@ -171,7 +171,7 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
   }
 
   const clientFee = Number(project.client_fee) || 0
-  const vatRate = Number(project.vat_rate) || 17
+  const vatRate = Number(project.vat_rate) || 18
   const clientFeeInclVat = clientFee * (1 + vatRate / 100)
   const totalCost = costItems.reduce((a, ci) => a + (Number(ci.rate) * Number(ci.planned_hours) * Number(ci.multiplier)), 0)
   const profit = clientFee - totalCost
@@ -197,7 +197,7 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
         <div className="sc">
           <div className="sc-l">VAT RATE</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input type="number" value={vatRate} onChange={e => onUpdateProject({ vat_rate: parseFloat(e.target.value) || 17 } as Partial<Project>)} style={{ fontSize: 20, fontWeight: 700, border: 'none', background: 'transparent', width: 50, padding: 0 }} />
+            <input type="number" value={vatRate} onChange={e => onUpdateProject({ vat_rate: parseFloat(e.target.value) || 18 } as Partial<Project>)} style={{ fontSize: 20, fontWeight: 700, border: 'none', background: 'transparent', width: 50, padding: 0 }} />
             <span style={{ fontSize: 13, color: 'var(--tx3)' }}>%</span>
           </div>
         </div>

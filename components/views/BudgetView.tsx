@@ -57,111 +57,96 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
       const ws = wb.Sheets[wb.SheetNames[0]]
       const rows: (string | number | null)[][] = XLSX.utils.sheet_to_json(ws, { header: 1 })
 
-      const parsed: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[] = []
-      let current: typeof parsed[0] | null = null
+      type ParsedBuilding = { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }
+      const parsed: ParsedBuilding[] = []
+      let current: ParsedBuilding | null = null
 
-      // Detect format from header row
-      const headerRow = rows.find(r => r.some(c => typeof c === 'string' && (c === 'Building' || c === 'בניין')))
+      // Find the header row to detect format
+      const headerRow = rows.find((r: unknown[]) => r.some(c => {
+        const s = String(c || '').toLowerCase()
+        return s === 'building' || s === 'בניין' || s === 'lot'
+      }))
       const headerIdx = headerRow ? rows.indexOf(headerRow) : -1
+      const startIdx = headerIdx >= 0 ? headerIdx + 1 : 0
 
-      // Find column indices from header
-      let colBuilding = -1, colType = -1, colSheet = -1, colFloorLabel = -1
-      let colFloorCount = -1, colSqm = -1, colPhaseA = -1, colPhaseB = -1, colNotes = -1
-
+      // Detect column positions from header
+      const hdr: Record<string, number> = {}
       if (headerRow) {
         headerRow.forEach((h: unknown, i: number) => {
           const s = String(h || '').toLowerCase().trim()
-          if (s === 'building' || s === 'בניין') colBuilding = i
-          else if (s.includes('typical #') || s === 'טיפוס') colType = i
-          else if (s === 'sheet') colSheet = i
-          else if (s.includes('floor') && s.includes('typical') || s === 'קומות טיפוסיות') colFloorLabel = i
-          else if (s.includes('# of floor') || s === 'מספר קומות') colFloorCount = i
-          else if (s.includes('typical sqm') || s.includes('מ"ר טיפוסי')) colSqm = i
-          else if (s.includes('phase a') || s.includes('שלב א')) colPhaseA = i
-          else if (s.includes('phase b') || s.includes('שלב ב')) colPhaseB = i
-          else if (s === 'notes' || s === 'הערות') colNotes = i
+          if (s === 'lot' || s === 'מגרש') hdr.lot = i
+          if (s === 'building' || s === 'בניין') hdr.building = i
+          if (s.includes('typical') && s.includes('#') || s === 'טיפוס' || s.includes('typical floor')) hdr.type = i
+          if (s.includes('floor') && s.includes('in') || s === 'קומות טיפוסיות' || s.includes('floor label')) hdr.floorLabel = i
+          if (s.includes('typical sqm') || s.includes('מ"ר טיפוסי')) hdr.sqm = i
+          if (s.includes('# of floor') || s === 'מספר קומות') hdr.floorCount = i
+          if (s.includes('phase a') || s.includes('שלב א') || s.includes('hours phase a')) hdr.phaseA = i
+          if (s.includes('phase b') || s.includes('שלב ב') || s.includes('hours phase b')) hdr.phaseB = i
+          if (s === 'notes' || s === 'הערות') hdr.notes = i
+          if (s === 'sheet') hdr.sheet = i
         })
       }
 
-      // Format A: Building in col 0, Type in col 1 (like the GYP index)
-      // Format B: Building in col 2, Type in col 3 (like original Sirkin)
-      const isFormatA = colBuilding === 0 || (headerIdx === -1 && rows.some(r => typeof r[0] === 'number' && typeof r[1] === 'number'))
+      // Determine format based on detected columns
+      // Format C: Lot/Building/Typical#/FloorsInTypical/TypicalSQM/Notes (new clean format)
+      // Format A: Building#/Typical#/Sheet/FloorLabel/Count/SQM/PhA/PhB
+      // Format B: col2=Building, col3=Type, col4=Label (old Sirkin)
 
-      if (isFormatA) {
-        // Format A: col0=Building#, col1=Type#, col2=Sheet, col3=FloorLabel, col4=Count, col5=SQM, col6=PhA, col7=PhB
-        if (colBuilding < 0) colBuilding = 0
-        if (colType < 0) colType = 1
-        if (colFloorLabel < 0) colFloorLabel = 3
-        if (colFloorCount < 0) colFloorCount = 4
-        if (colSqm < 0) colSqm = 5
-        if (colPhaseA < 0) colPhaseA = 6
-        if (colPhaseB < 0) colPhaseB = 7
-        if (colSheet < 0) colSheet = 2
+      const hasLot = hdr.lot !== undefined
+      const hasBuildingCol = hdr.building !== undefined
 
-        for (let i = (headerIdx >= 0 ? headerIdx + 1 : 0); i < rows.length; i++) {
-          const row = rows[i]
-          if (!row || !row.length) continue
+      for (let i = startIdx; i < rows.length; i++) {
+        const row = rows[i]
+        if (!row || !row.length) continue
 
-          // Stop parsing when we hit budget/payment sections or empty building rows
-          const rowText = row.map((c: unknown) => String(c || '')).join(' ')
-          if (rowText.includes('תקציב') || rowText.includes('אבני דרך') || rowText.includes('אבן דרך') || rowText.includes('Budget') || rowText.includes('Payment') || rowText.includes('עלות') || rowText.includes('רווח')) break
+        // Stop at budget/totals/payment sections
+        const rowText = row.map((c: unknown) => String(c || '')).join(' ')
+        if (rowText.includes('Budget') || rowText.includes('תקציב') || rowText.includes('אבני דרך') || rowText.includes('עלות') || rowText.includes('רווח') || rowText.includes('Payment')) break
+        if (String(row[0] || '').toLowerCase() === 'totals' || String(row[0] || '').includes('סה"כ')) break
 
-          const bldVal = row[colBuilding]
-          const typeVal = row[colType]
-          const floorLabel = String(row[colFloorLabel] || '').trim()
+        // Determine column positions (with fallbacks)
+        const cLot = hdr.lot ?? -1
+        const cBld = hdr.building ?? (hasLot ? 1 : 0)
+        const cType = hdr.type ?? (hasLot ? 2 : 1)
+        const cLabel = hdr.floorLabel ?? (hasLot ? 3 : 3)
+        const cSqm = hdr.sqm ?? (hasLot ? 4 : (hdr.floorCount !== undefined ? hdr.floorCount + 1 : 5))
+        const cNotes = hdr.notes ?? (hasLot ? 5 : -1)
+        const cPhA = hdr.phaseA ?? -1
+        const cPhB = hdr.phaseB ?? -1
+        const cCount = hdr.floorCount ?? -1
+        const cSheet = hdr.sheet ?? -1
 
-          if (typeof bldVal === 'string' && (bldVal === 'Building' || bldVal === 'בניין')) continue
+        const bldVal = row[cBld]
+        const typeVal = row[cType]
+        const floorLabel = String(row[cLabel] || '').trim()
 
-          // Totals row: typeVal is a large number and floorLabel is empty — skip
-          if (typeVal != null && !floorLabel) continue
+        // Skip header-like rows
+        if (typeof bldVal === 'string' && (bldVal.toLowerCase() === 'building' || bldVal === 'בניין')) continue
 
-          // New building: has building number AND a type number AND a floor label
-          if (bldVal != null && bldVal !== '' && typeof typeVal === 'number' && floorLabel) {
-            current = { name: `Building ${bldVal}`, floors: [] }
-            parsed.push(current)
-          }
+        // Totals row: has type number but no floor label
+        if (typeVal != null && !floorLabel) continue
 
-          if (typeVal == null && floorLabel === '') { continue }
-
-          if (current && typeof typeVal === 'number' && floorLabel) {
-            current.floors.push({
-              type_name: String(typeVal),
-              floor_label: floorLabel,
-              typical_floors: 1,
-              floor_count: Number(row[colFloorCount]) || 1,
-              typical_sqm: Math.round((Number(row[colSqm]) || 0) * 100) / 100,
-              phase_a_hours: Math.round((Number(row[colPhaseA]) || 0) * 100) / 100,
-              phase_b_hours: Math.round((Number(row[colPhaseB]) || 0) * 100) / 100,
-              notes: String(row[colSheet] || row[colNotes] || '').trim(),
-            })
-          }
+        // New building: building column has a value
+        if (bldVal != null && bldVal !== '' && typeof typeVal === 'number' && floorLabel) {
+          const lot = cLot >= 0 && row[cLot] != null && row[cLot] !== '' ? `Lot ${row[cLot]} - ` : ''
+          current = { name: `${lot}Building ${bldVal}`, floors: [] }
+          parsed.push(current)
         }
-      } else {
-        // Format B: col2=Building name, col3=Type#, col4=FloorLabel, col5=Count, col6=SQM, col8=PhA, col9=PhB
-        for (const row of rows) {
-          const col2 = String(row[2] || '').trim()
-          const col3 = row[3]
-          const col4 = String(row[4] || '').trim()
-          if (col2 === 'בניין' || col2 === 'Building') continue
-          if (col2.includes('סה"כ') || col2.includes('Total')) { current = null; continue }
 
-          if (col2 && typeof col3 === 'number' && col4) {
-            current = { name: col2.replace(/\n/g, ' '), floors: [] }
-            parsed.push(current)
-          }
+        if (typeVal == null && !floorLabel) continue
 
-          if (current && typeof col3 === 'number' && col4) {
-            current.floors.push({
-              type_name: String(col3),
-              floor_label: col4,
-              typical_floors: Number(row[5]) || 1,
-              floor_count: Number(row[5]) || 1,
-              typical_sqm: Number(row[6]) || 0,
-              phase_a_hours: Number(row[8]) || 0,
-              phase_b_hours: Number(row[9]) || 0,
-              notes: String(row[12] || '').trim(),
-            })
-          }
+        // Floor row
+        if (current && typeof typeVal === 'number' && floorLabel) {
+          current.floors.push({
+            type_name: String(typeVal),
+            floor_label: floorLabel,
+            typical_floors: 1,
+            floor_count: cCount >= 0 ? (Number(row[cCount]) || 1) : 1,
+            typical_sqm: Math.round((Number(row[cSqm]) || 0) * 100) / 100,
+            phase_a_hours: cPhA >= 0 ? Math.round((Number(row[cPhA]) || 0) * 100) / 100 : 0,
+            phase_b_hours: cPhB >= 0 ? Math.round((Number(row[cPhB]) || 0) * 100) / 100 : 0,
+            notes: String(row[cNotes] || row[cSheet] || '').trim(),
+          })
         }
       }
 

@@ -22,7 +22,12 @@ interface Props {
   onAddPayment: () => Promise<void>
   onUpdatePayment: (id: string, data: Partial<PaymentMilestone>) => Promise<void>
   onDeletePayment: (id: string) => Promise<void>
-  onImportScope: (data: { buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[] }) => Promise<void>
+  onImportScope: (data: {
+    buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[]
+    budgetItems?: { description: string; rate: number; planned_hours: number; multiplier: number; notes: string; category: string }[]
+    clientFee?: number
+    vatRate?: number
+  }) => Promise<void>
 }
 
 function InlineInput({ value, onChange, type = 'text', style, placeholder }: { value: string | number; onChange: (v: string) => void; type?: string; style?: React.CSSProperties; placeholder?: string }) {
@@ -134,11 +139,75 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
         }
       }
 
-      if (parsed.length === 0) {
-        alert('No buildings found in the spreadsheet.')
+      // Parse budget section
+      const budgetItems: { description: string; rate: number; planned_hours: number; multiplier: number; notes: string; category: string }[] = []
+      let clientFeeImport = 0
+      let vatRateImport = 0
+      let inExpBudget = false
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        if (!row || !row.length) continue
+        const col0 = String(row[0] || '').trim()
+        const col1 = String(row[1] || '').trim()
+
+        // Detect VAT rate
+        if (col0 === 'Budget Type' || col1 === 'Expanse') {
+          for (let j = 0; j < row.length; j++) {
+            if (String(row[j] || '').includes('VAT') && typeof row[j + 1] === 'number') {
+              vatRateImport = Number(row[j + 1]) * 100
+            }
+          }
+        }
+
+        // Start of expected budget
+        if (col0 === 'Exp. Budget') inExpBudget = true
+        if (col0 === 'Act. Budget') inExpBudget = false
+
+        // Budget line items (Exp. Budget rows)
+        if (inExpBudget && col1 && typeof row[2] === 'number' && typeof row[3] === 'number') {
+          budgetItems.push({
+            description: col1,
+            rate: Number(row[2]) || 0,
+            planned_hours: Math.round((Number(row[3]) || 0) * 100) / 100,
+            multiplier: Number(row[6]) || 1,
+            notes: String(row[7] || '').trim(),
+            category: String(row[5] || '').trim(),
+          })
+        }
+
+        // Operational factor (no rate/hours, just cost)
+        if (inExpBudget && col1 === 'Operational Factor' && typeof row[4] === 'number') {
+          budgetItems.push({
+            description: 'Operational Factor',
+            rate: Number(row[4]) || 0,
+            planned_hours: 1,
+            multiplier: 1,
+            notes: String(row[7] || '-').trim(),
+            category: String(row[5] || '').trim(),
+          })
+        }
+
+        // Client cost
+        if (col1 === 'Clients Cost' && typeof row[4] === 'number') {
+          clientFeeImport = Number(row[4])
+        }
+      }
+
+      if (parsed.length === 0 && budgetItems.length === 0) {
+        alert('No data found in the spreadsheet.')
       } else {
-        await onImportScope({ buildings: parsed })
-        alert(`Imported ${parsed.length} building(s) with ${parsed.reduce((a, b) => a + b.floors.length, 0)} floor types.`)
+        await onImportScope({
+          buildings: parsed,
+          budgetItems: budgetItems.length > 0 ? budgetItems : undefined,
+          clientFee: clientFeeImport || undefined,
+          vatRate: vatRateImport || undefined,
+        })
+        const parts = []
+        if (parsed.length) parts.push(`${parsed.length} building(s) with ${parsed.reduce((a, b) => a + b.floors.length, 0)} floor types`)
+        if (budgetItems.length) parts.push(`${budgetItems.length} budget line(s)`)
+        if (clientFeeImport) parts.push(`client fee ₪${clientFeeImport.toLocaleString()}`)
+        alert(`Imported: ${parts.join(', ')}`)
       }
     } catch (err) {
       console.error('Import error:', err)

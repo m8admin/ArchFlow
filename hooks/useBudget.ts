@@ -92,7 +92,12 @@ export function useBudget(projectId: string | null, enabled: boolean) {
     await fetchAll()
   }
 
-  async function importScope(data: { buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[] }) {
+  async function importScope(data: {
+    buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[]
+    budgetItems?: { description: string; rate: number; planned_hours: number; multiplier: number; notes: string; category: string }[]
+    clientFee?: number
+    vatRate?: number
+  }) {
     for (let i = 0; i < data.buildings.length; i++) {
       const b = data.buildings[i]
       const { data: inserted, error } = await supabase.from('scope_buildings').insert({ project_id: projectId, name: b.name, sort_order: buildings.length + i }).select().single()
@@ -102,6 +107,26 @@ export function useBudget(projectId: string | null, enabled: boolean) {
         const { error: fErr } = await supabase.from('scope_floors').insert(floorRows)
         if (fErr) console.error('importScope floors error:', fErr)
       }
+    }
+    if (data.budgetItems?.length) {
+      const rows = data.budgetItems.map((bi, i) => ({
+        project_id: projectId,
+        description: bi.description,
+        rate: bi.rate,
+        planned_hours: bi.planned_hours,
+        multiplier: bi.multiplier,
+        notes: bi.notes,
+        category: bi.category || 'subcontractor',
+        sort_order: costItems.length + i,
+      }))
+      const { error } = await supabase.from('budget_items').insert(rows)
+      if (error) console.error('importScope budget error:', error)
+    }
+    if (data.clientFee || data.vatRate) {
+      const update: Record<string, number> = {}
+      if (data.clientFee) update.client_fee = data.clientFee
+      if (data.vatRate) update.vat_rate = data.vatRate
+      await supabase.from('projects').update(update).eq('id', projectId)
     }
     await fetchAll()
   }

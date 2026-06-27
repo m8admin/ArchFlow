@@ -34,7 +34,12 @@ interface Props {
   onAddPayment: () => Promise<void>
   onUpdatePayment: (id: string, data: Partial<PaymentMilestone>) => Promise<void>
   onDeletePayment: (id: string) => Promise<void>
-  onImportScope: (data: { buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[] }) => Promise<void>
+  onImportScope: (data: {
+    buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[]
+    budgetItems?: { description: string; rate: number; planned_hours: number; multiplier: number; notes: string; category: string }[]
+    clientFee?: number
+    vatRate?: number
+  }) => Promise<void>
 }
 
 export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, onLogTime, onEditEntry, onEditMilestone, buildings, floors, costItems, payments, onUpdateProject, onAddBuilding, onUpdateBuilding, onDeleteBuilding, onAddFloor, onUpdateFloor, onDeleteFloor, onAddCostItem, onUpdateCostItem, onDeleteCostItem, onAddPayment, onUpdatePayment, onDeletePayment, onImportScope }: Props) {

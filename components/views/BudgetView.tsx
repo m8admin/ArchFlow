@@ -60,56 +60,103 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
       const parsed: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[] = []
       let current: typeof parsed[0] | null = null
 
-      for (const row of rows) {
-        const col2 = String(row[2] || '').trim()
-        const col3 = row[3]
-        const col4 = String(row[4] || '').trim()
+      // Detect format from header row
+      const headerRow = rows.find(r => r.some(c => typeof c === 'string' && (c === 'Building' || c === 'בניין')))
+      const headerIdx = headerRow ? rows.indexOf(headerRow) : -1
 
-        // Detect header rows (skip)
-        if (col2 === 'בניין' || col2 === 'Building') continue
-        // Detect total rows (skip)
-        if (col2.includes('סה"כ') || col2.includes('Total')) { current = null; continue }
+      // Find column indices from header
+      let colBuilding = -1, colType = -1, colSheet = -1, colFloorLabel = -1
+      let colFloorCount = -1, colSqm = -1, colPhaseA = -1, colPhaseB = -1, colNotes = -1
 
-        // New building: col2 has a building name and col3 is a type number
-        if (col2 && typeof col3 === 'number' && col4) {
-          current = { name: col2.replace(/\n/g, ' '), floors: [] }
-          parsed.push(current)
+      if (headerRow) {
+        headerRow.forEach((h: unknown, i: number) => {
+          const s = String(h || '').toLowerCase().trim()
+          if (s === 'building' || s === 'בניין') colBuilding = i
+          else if (s.includes('typical #') || s === 'טיפוס') colType = i
+          else if (s === 'sheet') colSheet = i
+          else if (s.includes('floor') && s.includes('typical') || s === 'קומות טיפוסיות') colFloorLabel = i
+          else if (s.includes('# of floor') || s === 'מספר קומות') colFloorCount = i
+          else if (s.includes('typical sqm') || s.includes('מ"ר טיפוסי')) colSqm = i
+          else if (s.includes('phase a') || s.includes('שלב א')) colPhaseA = i
+          else if (s.includes('phase b') || s.includes('שלב ב')) colPhaseB = i
+          else if (s === 'notes' || s === 'הערות') colNotes = i
+        })
+      }
+
+      // Format A: Building in col 0, Type in col 1 (like the GYP index)
+      // Format B: Building in col 2, Type in col 3 (like original Sirkin)
+      const isFormatA = colBuilding === 0 || (headerIdx === -1 && rows.some(r => typeof r[0] === 'number' && typeof r[1] === 'number'))
+
+      if (isFormatA) {
+        // Format A: col0=Building#, col1=Type#, col2=Sheet, col3=FloorLabel, col4=Count, col5=SQM, col6=PhA, col7=PhB
+        if (colBuilding < 0) colBuilding = 0
+        if (colType < 0) colType = 1
+        if (colFloorLabel < 0) colFloorLabel = 3
+        if (colFloorCount < 0) colFloorCount = 4
+        if (colSqm < 0) colSqm = 5
+        if (colPhaseA < 0) colPhaseA = 6
+        if (colPhaseB < 0) colPhaseB = 7
+        if (colSheet < 0) colSheet = 2
+
+        for (let i = (headerIdx >= 0 ? headerIdx + 1 : 0); i < rows.length; i++) {
+          const row = rows[i]
+          if (!row || !row.length) continue
+          const bldVal = row[colBuilding]
+          const typeVal = row[colType]
+          const floorLabel = String(row[colFloorLabel] || '').trim()
+
+          // Skip header/empty rows
+          if (typeof bldVal === 'string' && (bldVal === 'Building' || bldVal === 'בניין')) continue
+
+          // New building
+          if (bldVal != null && bldVal !== '' && typeof typeVal === 'number' && floorLabel) {
+            current = { name: `Building ${bldVal}`, floors: [] }
+            parsed.push(current)
+          }
+
+          // Totals row (typeVal is null/empty, floorLabel is empty) — skip
+          if (typeVal == null && floorLabel === '') { continue }
+
+          // Floor row
+          if (current && typeof typeVal === 'number' && floorLabel) {
+            current.floors.push({
+              type_name: String(typeVal),
+              floor_label: floorLabel,
+              typical_floors: Number(row[colFloorCount]) || 1,
+              floor_count: Number(row[colFloorCount]) || 1,
+              typical_sqm: Number(row[colSqm]) || 0,
+              phase_a_hours: Number(row[colPhaseA]) || 0,
+              phase_b_hours: Number(row[colPhaseB]) || 0,
+              notes: String(row[colSheet] || row[colNotes] || '').trim(),
+            })
+          }
         }
+      } else {
+        // Format B: col2=Building name, col3=Type#, col4=FloorLabel, col5=Count, col6=SQM, col8=PhA, col9=PhB
+        for (const row of rows) {
+          const col2 = String(row[2] || '').trim()
+          const col3 = row[3]
+          const col4 = String(row[4] || '').trim()
+          if (col2 === 'בניין' || col2 === 'Building') continue
+          if (col2.includes('סה"כ') || col2.includes('Total')) { current = null; continue }
 
-        // Floor row: has a type number in col3 and floor label in col4
-        if (current && typeof col3 === 'number' && col4) {
-          const floorCount = Number(row[5]) || 1
-          const sqm = Number(row[6]) || 0
-          const phA = Number(row[8]) || 0
-          const phB = Number(row[9]) || 0
-          const notes = String(row[12] || '').trim()
-          current.floors.push({
-            type_name: String(col3),
-            floor_label: col4,
-            typical_floors: floorCount,
-            floor_count: floorCount,
-            typical_sqm: sqm,
-            phase_a_hours: phA,
-            phase_b_hours: phB,
-            notes,
-          })
-        } else if (current && !col2 && typeof col3 === 'number' && col4) {
-          // Continuation floor row (no building name in col2)
-          const floorCount = Number(row[5]) || 1
-          const sqm = Number(row[6]) || 0
-          const phA = Number(row[8]) || 0
-          const phB = Number(row[9]) || 0
-          const notes = String(row[12] || '').trim()
-          current.floors.push({
-            type_name: String(col3),
-            floor_label: col4,
-            typical_floors: floorCount,
-            floor_count: floorCount,
-            typical_sqm: sqm,
-            phase_a_hours: phA,
-            phase_b_hours: phB,
-            notes,
-          })
+          if (col2 && typeof col3 === 'number' && col4) {
+            current = { name: col2.replace(/\n/g, ' '), floors: [] }
+            parsed.push(current)
+          }
+
+          if (current && typeof col3 === 'number' && col4) {
+            current.floors.push({
+              type_name: String(col3),
+              floor_label: col4,
+              typical_floors: Number(row[5]) || 1,
+              floor_count: Number(row[5]) || 1,
+              typical_sqm: Number(row[6]) || 0,
+              phase_a_hours: Number(row[8]) || 0,
+              phase_b_hours: Number(row[9]) || 0,
+              notes: String(row[12] || '').trim(),
+            })
+          }
         }
       }
 

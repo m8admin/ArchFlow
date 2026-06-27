@@ -173,7 +173,7 @@ export default function AppShell() {
     <div className="shell">
       {/* Topbar */}
       <div className="topbar">
-        <img src="/FLOW logo.png" alt="ArchFlow" style={{ height: 36 }} />
+        <img src="/FLOW logo.png" alt="ArchFlow" style={{ height: 44 }} />
         <div className="tp-r">
           {/* Export dropdown */}
           <div className={`ew${exportOpen ? ' open' : ''}`}>

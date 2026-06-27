@@ -176,7 +176,7 @@ export default function AppShell() {
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
           <div className="logo">Arch<span>Flow</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: 'var(--tx3)', letterSpacing: '.02em' }}>
-            by <img src="/m8-logo.svg" alt="M8" style={{ height: 14, verticalAlign: 'middle' }} />
+            by <img src="/m8-logo.svg" alt="M8" style={{ height: 28, verticalAlign: 'middle' }} />
           </div>
         </div>
         <div className="tp-r">

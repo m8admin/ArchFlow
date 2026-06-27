@@ -52,7 +52,7 @@ select { cursor: pointer; }
 
 /* Shell */
 .shell { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-.topbar { display: flex; align-items: center; gap: 10px; padding: 0 18px; height: 52px; background: var(--sf); border-bottom: 1px solid var(--bd); flex-shrink: 0; }
+.topbar { display: flex; align-items: center; gap: 10px; padding: 0 18px; height: 96px; background: var(--sf); border-bottom: 1px solid var(--bd); flex-shrink: 0; }
 .logo { font-size: 16px; font-weight: 800; letter-spacing: -.6px; }
 .logo span { color: var(--bl); }
 .tp-r { margin-left: auto; display: flex; align-items: center; gap: 8px; }

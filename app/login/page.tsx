@@ -40,7 +40,7 @@ export default function LoginPage() {
         padding: 32, width: 380, boxShadow: '0 8px 32px rgba(0,0,0,.1)',
       }}>
         <div style={{ marginBottom: 24 }}>
-          <img src="/FLOW logo.png" alt="ArchFlow" style={{ height: 44, marginBottom: 4 }} />
+          <img src="/FLOW logo.png" alt="ArchFlow" style={{ height: 88, marginBottom: 4 }} />
           <div style={{ fontSize: 13, color: 'var(--tx3)' }}>
             {mode === 'signin' ? 'Sign in to continue' : 'Create your account'}
           </div>

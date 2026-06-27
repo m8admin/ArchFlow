@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useAppData } from '@/hooks/useAppData'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useTimeEntries } from '@/hooks/useTimeEntries'
+import { useBudget } from '@/hooks/useBudget'
 import { useToast } from '@/hooks/useToast'
 import { ToastContainer } from '@/components/ui/Toast'
 import { BoardView } from '@/components/views/BoardView'
@@ -50,8 +51,16 @@ export default function AppShell() {
   const [modal, setModal] = useState<ModalState>({ kind: 'none' })
   const [exportOpen, setExportOpen] = useState(false)
   const [mgmtProjectId, setMgmtProjectId] = useState<string | null>(null)
+  const budget = useBudget(mgmtProjectId, isAdmin)
 
   const goView = (v: ViewName) => { setView(v); setProfile(null); setMgmtProjectId(null) }
+
+  async function handleUpdateProjectPartial(data: Partial<Project>) {
+    if (!mgmtProjectId) return
+    const supabase2 = createClient()
+    await supabase2.from('projects').update(data).eq('id', mgmtProjectId)
+    await fetchAll()
+  }
 
   // ── Project save (handles inline new client) ────────────────────────────────
   async function handleSaveProject(data: Omit<Project, 'id'> & { id?: string }) {
@@ -298,6 +307,12 @@ export default function AppShell() {
               onLogTime={(taskId) => setModal({ kind: 'timeentry', defaultProjectId: mgmtProjectId || undefined, defaultTaskId: taskId || undefined })}
               onEditEntry={entry => setModal({ kind: 'timeentry', entry })}
               onEditMilestone={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: 'milestone', task: t }) }}
+              buildings={budget.buildings} floors={budget.floors} costItems={budget.costItems} payments={budget.payments}
+              onUpdateProject={handleUpdateProjectPartial}
+              onAddBuilding={budget.addBuilding} onUpdateBuilding={budget.updateBuilding} onDeleteBuilding={budget.deleteBuilding}
+              onAddFloor={budget.addFloor} onUpdateFloor={budget.updateFloor} onDeleteFloor={budget.deleteFloor}
+              onAddCostItem={budget.addCostItem} onUpdateCostItem={budget.updateCostItem} onDeleteCostItem={budget.deleteCostItem}
+              onAddPayment={budget.addPayment} onUpdatePayment={budget.updatePayment} onDeletePayment={budget.deletePayment}
             />
           ) : view === 'timetracking' && isAdmin ? (
             <TimeTrackingView

@@ -25,6 +25,8 @@ export interface Project {
   city: string
   address: string
   drawings_platform: string
+  client_fee: number
+  vat_rate: number
 }
 
 export interface Task {
@@ -97,6 +99,51 @@ export const STATUS_META: Record<Status, { label: string; col: string; bg: strin
   hold:     { label: 'Hold',     col: '#757575', bg: '#EEEEEE' },
   done:     { label: 'Done',     col: '#1A7A4A', bg: '#E8F5EE' },
   delayed:  { label: 'Delayed',  col: '#B83232', bg: '#FDEDED' },
+}
+
+export interface ScopeBuilding {
+  id: string
+  project_id: string
+  name: string
+  sort_order: number
+}
+
+export interface ScopeFloor {
+  id: string
+  building_id: string
+  type_name: string
+  floor_label: string
+  typical_floors: number
+  floor_count: number
+  typical_sqm: number
+  phase_a_hours: number
+  phase_b_hours: number
+  notes: string
+  sort_order: number
+}
+
+export interface BudgetItem {
+  id: string
+  project_id: string
+  description: string
+  category: 'labor' | 'subcontractor' | 'other'
+  rate: number
+  planned_hours: number
+  multiplier: number
+  actual_cost: number | null
+  notes: string
+  sort_order: number
+}
+
+export interface PaymentMilestone {
+  id: string
+  project_id: string
+  name: string
+  percentage: number
+  status: 'pending' | 'invoiced' | 'paid'
+  date_paid: string | null
+  notes: string
+  sort_order: number
 }
 
 export type UserRole = 'admin' | 'member'

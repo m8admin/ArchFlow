@@ -48,6 +48,8 @@ export function useAppData() {
       city: data.city,
       address: data.address,
       drawings_platform: data.drawings_platform,
+      client_fee: data.client_fee,
+      vat_rate: data.vat_rate,
     }
     if (data.id) {
       const { error } = await supabase.from('projects').update(payload).eq('id', data.id)

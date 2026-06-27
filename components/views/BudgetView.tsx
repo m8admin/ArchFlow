@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import type { Project, ScopeBuilding, ScopeFloor, BudgetItem, PaymentMilestone } from '@/lib/types'
+import type { Project, ScopeBuilding, ScopeFloor, BudgetItem, PaymentMilestone, Task } from '@/lib/types'
 
 interface Props {
   project: Project
@@ -22,6 +22,8 @@ interface Props {
   onAddPayment: () => Promise<void>
   onUpdatePayment: (id: string, data: Partial<PaymentMilestone>) => Promise<void>
   onDeletePayment: (id: string) => Promise<void>
+  milestones: Task[]
+  hoursByTask: Record<string, number>
   onImportScope: (data: {
     buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[]
     budgetItems?: { description: string; rate: number; planned_hours: number; multiplier: number; notes: string; category: string }[]
@@ -46,7 +48,7 @@ function InlineInput({ value, onChange, type = 'text', style, placeholder }: { v
 
 function fmt$(n: number) { return '₪' + n.toLocaleString(undefined, { maximumFractionDigits: 0 }) }
 
-export function BudgetView({ project, buildings, floors, costItems, payments, onUpdateProject, onAddBuilding, onUpdateBuilding, onDeleteBuilding, onAddFloor, onUpdateFloor, onDeleteFloor, onAddCostItem, onUpdateCostItem, onDeleteCostItem, onAddPayment, onUpdatePayment, onDeletePayment, onImportScope }: Props) {
+export function BudgetView({ project, buildings, floors, costItems, payments, milestones, hoursByTask, onUpdateProject, onAddBuilding, onUpdateBuilding, onDeleteBuilding, onAddFloor, onUpdateFloor, onDeleteFloor, onAddCostItem, onUpdateCostItem, onDeleteCostItem, onAddPayment, onUpdatePayment, onDeletePayment, onImportScope }: Props) {
   const [detailedBuildings, setDetailedBuildings] = useState<Record<string, boolean>>({})
   const [importing, setImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -417,6 +419,58 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
           </tbody>
         </table>
       </div>
+
+      {/* ── Milestone Phase Breakdown ── */}
+      {(() => {
+        const phases = [...new Set(milestones.filter(m => m.phase).map(m => m.phase.toUpperCase()))].sort()
+        const budgetByPhase: Record<string, number> = {}
+        costItems.forEach(ci => {
+          const p = (ci.category || '').toUpperCase().trim()
+          if (p) budgetByPhase[p] = (budgetByPhase[p] || 0) + (Number(ci.rate) * Number(ci.planned_hours) * Number(ci.multiplier))
+        })
+        const allPhases = [...new Set([...phases, ...Object.keys(budgetByPhase)])].sort()
+        if (!allPhases.length) return null
+        return (
+          <>
+            <div className="sec-t" style={{ fontSize: 14, fontWeight: 700 }}>Milestones by Phase</div>
+            <div className="tw" style={{ marginBottom: 18 }}>
+              <table>
+                <thead>
+                  <tr><th>Phase</th><th>Milestones</th><th>Budget (exp.)</th><th>Planned Hours</th><th>Actual Hours</th><th>Variance</th><th style={{ minWidth: 100 }}></th></tr>
+                </thead>
+                <tbody>
+                  {allPhases.map(ph => {
+                    const phaseMilestones = milestones.filter(m => (m.phase || '').toUpperCase() === ph)
+                    const plannedHrs = phaseMilestones.reduce((a, m) => a + (m.modeller_hours || 0), 0)
+                    const actualHrs = phaseMilestones.reduce((a, m) => a + (hoursByTask[m.id] || 0), 0)
+                    const variance = actualHrs - plannedHrs
+                    const budgetAmt = budgetByPhase[ph] || 0
+                    const pct = plannedHrs > 0 ? Math.min(100, (actualHrs / plannedHrs) * 100) : 0
+                    const over = plannedHrs > 0 && actualHrs > plannedHrs
+                    return (
+                      <tr key={ph}>
+                        <td style={{ fontWeight: 700, fontSize: 14 }}>{ph}</td>
+                        <td style={{ fontSize: 12 }}>{phaseMilestones.map(m => m.name).join(', ') || '—'}</td>
+                        <td style={{ fontSize: 12 }}>{budgetAmt ? fmt$(budgetAmt) : '—'}</td>
+                        <td style={{ fontSize: 12 }}>{plannedHrs ? `${plannedHrs}h` : '—'}</td>
+                        <td style={{ fontSize: 12, fontWeight: 600 }}>{actualHrs ? `${parseFloat(actualHrs.toFixed(1))}h` : '—'}</td>
+                        <td style={{ fontSize: 12, fontWeight: 600, color: over ? 'var(--rd)' : variance < 0 ? 'var(--gn)' : 'var(--tx3)' }}>
+                          {plannedHrs ? `${variance > 0 ? '+' : ''}${parseFloat(variance.toFixed(1))}h` : '—'}
+                        </td>
+                        <td>
+                          <div style={{ background: 'var(--sf2)', height: 8, borderRadius: 20, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, borderRadius: 20, background: over ? 'var(--rd)' : 'var(--bl)' }} />
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )
+      })()}
 
       {/* ── 3. Financials Summary ── */}
       <div className="sec-t" style={{ fontSize: 14, fontWeight: 700 }}>Financials</div>

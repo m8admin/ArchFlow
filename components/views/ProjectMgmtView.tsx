@@ -172,6 +172,7 @@ export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, o
           onAddFloor={onAddFloor} onUpdateFloor={onUpdateFloor} onDeleteFloor={onDeleteFloor}
           onAddCostItem={onAddCostItem} onUpdateCostItem={onUpdateCostItem} onDeleteCostItem={onDeleteCostItem}
           onAddPayment={onAddPayment} onUpdatePayment={onUpdatePayment} onDeletePayment={onDeletePayment}
+          milestones={milestones} hoursByTask={hoursByTask}
           onImportScope={onImportScope}
         />
       )}

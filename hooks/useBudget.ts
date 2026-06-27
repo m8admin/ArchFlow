@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ScopeBuilding, ScopeFloor, BudgetItem, PaymentMilestone } from '@/lib/types'
 
-export function useBudget(projectId: string | null, enabled: boolean) {
+export function useBudget(projectId: string | null, enabled: boolean, onProjectUpdate?: () => Promise<void>) {
   const [buildings, setBuildings] = useState<ScopeBuilding[]>([])
   const [floors, setFloors] = useState<ScopeFloor[]>([])
   const [costItems, setCostItems] = useState<BudgetItem[]>([])
@@ -126,7 +126,9 @@ export function useBudget(projectId: string | null, enabled: boolean) {
       const update: Record<string, number> = {}
       if (data.clientFee) update.client_fee = data.clientFee
       if (data.vatRate) update.vat_rate = data.vatRate
-      await supabase.from('projects').update(update).eq('id', projectId)
+      const { error } = await supabase.from('projects').update(update).eq('id', projectId)
+      if (error) console.error('importScope project update error:', error)
+      if (onProjectUpdate) await onProjectUpdate()
     }
     await fetchAll()
   }

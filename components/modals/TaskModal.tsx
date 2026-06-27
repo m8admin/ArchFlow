@@ -46,6 +46,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
   const label = isMilestone ? 'Milestone' : 'Task'
 
   const [name, setName] = useState('')
+  const [phase, setPhase] = useState('')
   const [projectId, setProjectId] = useState('')
   const [parentMilestoneId, setParentMilestoneId] = useState('')
   const [startDate, setStartDate] = useState(todayStr())
@@ -63,7 +64,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
 
   useEffect(() => {
     if (task) {
-      setName(task.name); setProjectId(task.project_id)
+      setName(task.name); setPhase(task.phase || ''); setProjectId(task.project_id)
       setParentMilestoneId(task.parent_milestone_id || '')
       setStartDate(task.start_date); setEndDate(task.end_date)
       setStatus(task.status); setPct(task.pct); setNotes(task.notes || '')
@@ -74,7 +75,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
       setModellerContractorIds(task.modeller_contractor_ids || [])
       setModellerHours(task.modeller_hours ? String(task.modeller_hours) : '')
     } else {
-      setName(''); setProjectId(defaultProjectId || projects[0]?.id || '')
+      setName(''); setPhase(''); setProjectId(defaultProjectId || projects[0]?.id || '')
       setParentMilestoneId(defaultMilestoneId || '')
       setStartDate(todayStr()); setEndDate(dFrom(14))
       setStatus('planning'); setPct(0); setNotes('')
@@ -94,6 +95,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
     await onSave({
       id: task?.id, name: name.trim(), project_id: projectId,
       kind: isMilestone ? 'milestone' as const : 'task' as const,
+      phase: phase.trim().toUpperCase(),
       parent_milestone_id: isMilestone ? null : (parentMilestoneId || null),
       start_date: startDate, end_date: endDate,
       status, pct: Math.min(100, Math.max(0, pct)),
@@ -120,8 +122,14 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
       <div className="fg">
         <div className="fr ff">
           <label>{label} name *</label>
-          <input value={name} onChange={e => setName(e.target.value)} />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder={isMilestone ? 'e.g. Tender drawings, Construction drawings' : ''} />
         </div>
+        {isMilestone && (
+          <div className="fr">
+            <label>Phase</label>
+            <input value={phase} onChange={e => setPhase(e.target.value)} placeholder="e.g. A, B, C" style={{ width: 60, textTransform: 'uppercase' }} />
+          </div>
+        )}
         <div className="fr ff">
           <label>Project *</label>
           <select value={projectId} onChange={e => setProjectId(e.target.value)}>

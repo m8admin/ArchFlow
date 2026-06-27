@@ -51,7 +51,7 @@ export default function AppShell() {
   const [modal, setModal] = useState<ModalState>({ kind: 'none' })
   const [exportOpen, setExportOpen] = useState(false)
   const [mgmtProjectId, setMgmtProjectId] = useState<string | null>(null)
-  const budget = useBudget(mgmtProjectId, isAdmin)
+  const budget = useBudget(mgmtProjectId, isAdmin, fetchAll)
 
   const goView = (v: ViewName) => { setView(v); setProfile(null); setMgmtProjectId(null) }
 

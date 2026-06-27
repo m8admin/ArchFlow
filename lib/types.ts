@@ -33,6 +33,7 @@ export interface Task {
   id: string
   project_id: string
   kind: 'milestone' | 'task'
+  phase: string
   name: string
   start_date: string
   end_date: string

@@ -222,6 +222,7 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
         <button className="btn bxs" onClick={() => { const name = prompt('Building name:'); if (name) onAddBuilding(name) }}>+ Add Building</button>
         <button className="btn bxs" onClick={() => fileRef.current?.click()} disabled={importing}>{importing ? 'Importing…' : '📥 Import Excel'}</button>
         <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleImportExcel} style={{ display: 'none' }} />
+        {buildings.length > 0 && <button className="btn bd bxs" onClick={async () => { if (confirm('Delete all buildings and floor data for this project?')) { for (const b of buildings) await onDeleteBuilding(b.id) } }}>Clear all scope</button>}
       </div>
 
       {buildings.map(bld => {

@@ -105,24 +105,20 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
           const typeVal = row[colType]
           const floorLabel = String(row[colFloorLabel] || '').trim()
 
-          // Skip header/empty rows
           if (typeof bldVal === 'string' && (bldVal === 'Building' || bldVal === 'בניין')) continue
 
-          // New building
           if (bldVal != null && bldVal !== '' && typeof typeVal === 'number' && floorLabel) {
             current = { name: `Building ${bldVal}`, floors: [] }
             parsed.push(current)
           }
 
-          // Totals row (typeVal is null/empty, floorLabel is empty) — skip
           if (typeVal == null && floorLabel === '') { continue }
 
-          // Floor row
           if (current && typeof typeVal === 'number' && floorLabel) {
             current.floors.push({
               type_name: String(typeVal),
               floor_label: floorLabel,
-              typical_floors: Number(row[colFloorCount]) || 1,
+              typical_floors: 1,
               floor_count: Number(row[colFloorCount]) || 1,
               typical_sqm: Number(row[colSqm]) || 0,
               phase_a_hours: Number(row[colPhaseA]) || 0,
@@ -246,7 +242,7 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
               <table>
                 <thead>
                   <tr>
-                    <th>Type</th><th>Floor Label</th><th>Typ. Floors</th><th>Count</th>
+                    <th>Typical #</th><th>Floor Label</th><th>Typ. Floors</th><th># of Floors</th>
                     <th>SQM</th><th>Total SQM</th><th>Phase A hrs</th><th>Phase B hrs</th>
                     <th>Notes</th><th style={{ width: 36 }}></th>
                   </tr>

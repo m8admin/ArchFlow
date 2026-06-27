@@ -39,6 +39,7 @@ interface Props {
     budgetItems?: { description: string; rate: number; planned_hours: number; multiplier: number; notes: string; category: string }[]
     clientFee?: number
     vatRate?: number
+    paymentItems?: { name: string; percentage: number }[]
   }) => Promise<void>
 }
 

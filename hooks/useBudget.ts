@@ -97,6 +97,7 @@ export function useBudget(projectId: string | null, enabled: boolean, onProjectU
     budgetItems?: { description: string; rate: number; planned_hours: number; multiplier: number; notes: string; category: string }[]
     clientFee?: number
     vatRate?: number
+    paymentItems?: { name: string; percentage: number }[]
   }) {
     for (let i = 0; i < data.buildings.length; i++) {
       const b = data.buildings[i]
@@ -121,6 +122,16 @@ export function useBudget(projectId: string | null, enabled: boolean, onProjectU
       }))
       const { error } = await supabase.from('budget_items').insert(rows)
       if (error) console.error('importScope budget error:', error)
+    }
+    if (data.paymentItems?.length) {
+      const rows = data.paymentItems.map((pm, i) => ({
+        project_id: projectId,
+        name: pm.name,
+        percentage: pm.percentage,
+        sort_order: payments.length + i,
+      }))
+      const { error } = await supabase.from('payment_milestones').insert(rows)
+      if (error) console.error('importScope payments error:', error)
     }
     if (data.clientFee || data.vatRate) {
       const update: Record<string, number> = {}

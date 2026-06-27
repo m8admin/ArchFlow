@@ -29,6 +29,7 @@ interface Props {
     budgetItems?: { description: string; rate: number; planned_hours: number; multiplier: number; notes: string; category: string }[]
     clientFee?: number
     vatRate?: number
+    paymentItems?: { name: string; percentage: number }[]
   }) => Promise<void>
 }
 
@@ -196,7 +197,28 @@ export function BudgetView({ project, buildings, floors, costItems, payments, mi
         }
       }
 
-      if (parsed.length === 0 && budgetItems.length === 0) {
+      // Parse payment milestones (Section 3)
+      const paymentItems: { name: string; percentage: number }[] = []
+      let inPayments = false
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        if (!row || !row.length) continue
+        const col0 = String(row[0] || '').trim()
+        const col1Str = String(row[1] || '').trim()
+
+        if (col1Str.includes('Payment Milestones') || col1Str.includes('אבני דרך')) { inPayments = true; continue }
+        if (inPayments && (col0 === 'Milestone' || col0 === 'אבן דרך')) continue
+        if (inPayments && (col0.toLowerCase() === 'total' || col0.includes('סה"כ'))) { inPayments = false; continue }
+
+        if (inPayments && col0 && typeof row[2] === 'number' && row[2] > 0 && row[2] <= 1) {
+          paymentItems.push({
+            name: col0,
+            percentage: Math.round(Number(row[2]) * 10000) / 100,
+          })
+        }
+      }
+
+      if (parsed.length === 0 && budgetItems.length === 0 && paymentItems.length === 0) {
         alert('No data found in the spreadsheet.')
       } else {
         await onImportScope({
@@ -204,10 +226,12 @@ export function BudgetView({ project, buildings, floors, costItems, payments, mi
           budgetItems: budgetItems.length > 0 ? budgetItems : undefined,
           clientFee: clientFeeImport || undefined,
           vatRate: vatRateImport || undefined,
+          paymentItems: paymentItems.length > 0 ? paymentItems : undefined,
         })
         const parts = []
         if (parsed.length) parts.push(`${parsed.length} building(s) with ${parsed.reduce((a, b) => a + b.floors.length, 0)} floor types`)
         if (budgetItems.length) parts.push(`${budgetItems.length} budget line(s)`)
+        if (paymentItems.length) parts.push(`${paymentItems.length} payment milestone(s)`)
         if (clientFeeImport) parts.push(`client fee ₪${clientFeeImport.toLocaleString()}`)
         alert(`Imported: ${parts.join(', ')}`)
       }

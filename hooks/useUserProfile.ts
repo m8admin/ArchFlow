@@ -14,12 +14,14 @@ export function useUserProfile() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoading(false); return }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles')
         .select('role')
         .eq('auth_user_id', user.id)
         .single()
+      if (error) console.error('useUserProfile error:', error)
       if (data) setRole(data.role as UserRole)
+      else console.warn('No user profile found for', user.id, user.email)
       setLoading(false)
     }
     load()

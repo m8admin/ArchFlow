@@ -92,12 +92,26 @@ export function useBudget(projectId: string | null, enabled: boolean) {
     await fetchAll()
   }
 
+  async function importScope(data: { buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[] }) {
+    for (let i = 0; i < data.buildings.length; i++) {
+      const b = data.buildings[i]
+      const { data: inserted, error } = await supabase.from('scope_buildings').insert({ project_id: projectId, name: b.name, sort_order: buildings.length + i }).select().single()
+      if (error || !inserted) { console.error('importScope building error:', error); continue }
+      if (b.floors.length) {
+        const floorRows = b.floors.map((f, j) => ({ building_id: inserted.id, ...f, sort_order: j }))
+        const { error: fErr } = await supabase.from('scope_floors').insert(floorRows)
+        if (fErr) console.error('importScope floors error:', fErr)
+      }
+    }
+    await fetchAll()
+  }
+
   return {
     buildings, floors, costItems, payments, loading,
     addBuilding, updateBuilding, deleteBuilding,
     addFloor, updateFloor, deleteFloor,
     addCostItem, updateCostItem, deleteCostItem,
     addPayment, updatePayment, deletePayment,
-    refresh: fetchAll,
+    importScope, refresh: fetchAll,
   }
 }

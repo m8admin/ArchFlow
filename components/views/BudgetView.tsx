@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Project, ScopeBuilding, ScopeFloor, BudgetItem, PaymentMilestone } from '@/lib/types'
 
 interface Props {
@@ -22,6 +22,7 @@ interface Props {
   onAddPayment: () => Promise<void>
   onUpdatePayment: (id: string, data: Partial<PaymentMilestone>) => Promise<void>
   onDeletePayment: (id: string) => Promise<void>
+  onImportScope: (data: { buildings: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[] }) => Promise<void>
 }
 
 function InlineInput({ value, onChange, type = 'text', style, placeholder }: { value: string | number; onChange: (v: string) => void; type?: string; style?: React.CSSProperties; placeholder?: string }) {
@@ -39,8 +40,92 @@ function InlineInput({ value, onChange, type = 'text', style, placeholder }: { v
   )
 }
 
-export function BudgetView({ project, buildings, floors, costItems, payments, onUpdateProject, onAddBuilding, onUpdateBuilding, onDeleteBuilding, onAddFloor, onUpdateFloor, onDeleteFloor, onAddCostItem, onUpdateCostItem, onDeleteCostItem, onAddPayment, onUpdatePayment, onDeletePayment }: Props) {
+export function BudgetView({ project, buildings, floors, costItems, payments, onUpdateProject, onAddBuilding, onUpdateBuilding, onDeleteBuilding, onAddFloor, onUpdateFloor, onDeleteFloor, onAddCostItem, onUpdateCostItem, onDeleteCostItem, onAddPayment, onUpdatePayment, onDeletePayment, onImportScope }: Props) {
   const [detailedBuildings, setDetailedBuildings] = useState<Record<string, boolean>>({})
+  const [importing, setImporting] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const XLSX = (window as unknown as { XLSX: typeof import('xlsx') }).XLSX
+      if (!XLSX) { alert('Excel library loading, try again.'); setImporting(false); return }
+      const data = await file.arrayBuffer()
+      const wb = XLSX.read(data)
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows: (string | number | null)[][] = XLSX.utils.sheet_to_json(ws, { header: 1 })
+
+      const parsed: { name: string; floors: { type_name: string; floor_label: string; typical_floors: number; floor_count: number; typical_sqm: number; phase_a_hours: number; phase_b_hours: number; notes: string }[] }[] = []
+      let current: typeof parsed[0] | null = null
+
+      for (const row of rows) {
+        const col2 = String(row[2] || '').trim()
+        const col3 = row[3]
+        const col4 = String(row[4] || '').trim()
+
+        // Detect header rows (skip)
+        if (col2 === 'בניין' || col2 === 'Building') continue
+        // Detect total rows (skip)
+        if (col2.includes('סה"כ') || col2.includes('Total')) { current = null; continue }
+
+        // New building: col2 has a building name and col3 is a type number
+        if (col2 && typeof col3 === 'number' && col4) {
+          current = { name: col2.replace(/\n/g, ' '), floors: [] }
+          parsed.push(current)
+        }
+
+        // Floor row: has a type number in col3 and floor label in col4
+        if (current && typeof col3 === 'number' && col4) {
+          const floorCount = Number(row[5]) || 1
+          const sqm = Number(row[6]) || 0
+          const phA = Number(row[8]) || 0
+          const phB = Number(row[9]) || 0
+          const notes = String(row[12] || '').trim()
+          current.floors.push({
+            type_name: String(col3),
+            floor_label: col4,
+            typical_floors: floorCount,
+            floor_count: floorCount,
+            typical_sqm: sqm,
+            phase_a_hours: phA,
+            phase_b_hours: phB,
+            notes,
+          })
+        } else if (current && !col2 && typeof col3 === 'number' && col4) {
+          // Continuation floor row (no building name in col2)
+          const floorCount = Number(row[5]) || 1
+          const sqm = Number(row[6]) || 0
+          const phA = Number(row[8]) || 0
+          const phB = Number(row[9]) || 0
+          const notes = String(row[12] || '').trim()
+          current.floors.push({
+            type_name: String(col3),
+            floor_label: col4,
+            typical_floors: floorCount,
+            floor_count: floorCount,
+            typical_sqm: sqm,
+            phase_a_hours: phA,
+            phase_b_hours: phB,
+            notes,
+          })
+        }
+      }
+
+      if (parsed.length === 0) {
+        alert('No buildings found in the spreadsheet. Make sure it follows the expected format.')
+      } else {
+        await onImportScope({ buildings: parsed })
+        alert(`Imported ${parsed.length} building(s) with ${parsed.reduce((a, b) => a + b.floors.length, 0)} floor types.`)
+      }
+    } catch (err) {
+      console.error('Import error:', err)
+      alert('Error reading the Excel file.')
+    }
+    setImporting(false)
+    if (fileRef.current) fileRef.current.value = ''
+  }
 
   const clientFee = Number(project.client_fee) || 0
   const vatRate = Number(project.vat_rate) || 17
@@ -83,6 +168,8 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
       <div className="sec-t" style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
         Scope Breakdown
         <button className="btn bxs" onClick={() => { const name = prompt('Building name:'); if (name) onAddBuilding(name) }}>+ Add Building</button>
+        <button className="btn bxs" onClick={() => fileRef.current?.click()} disabled={importing}>{importing ? 'Importing…' : '📥 Import Excel'}</button>
+        <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleImportExcel} style={{ display: 'none' }} />
       </div>
 
       {buildings.map(bld => {

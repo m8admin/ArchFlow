@@ -313,6 +313,7 @@ export default function AppShell() {
               onAddFloor={budget.addFloor} onUpdateFloor={budget.updateFloor} onDeleteFloor={budget.deleteFloor}
               onAddCostItem={budget.addCostItem} onUpdateCostItem={budget.updateCostItem} onDeleteCostItem={budget.deleteCostItem}
               onAddPayment={budget.addPayment} onUpdatePayment={budget.updatePayment} onDeletePayment={budget.deletePayment}
+              onImportScope={budget.importScope}
             />
           ) : view === 'timetracking' && isAdmin ? (
             <TimeTrackingView

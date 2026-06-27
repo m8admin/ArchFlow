@@ -8,6 +8,8 @@ import { todayStr } from '@/lib/utils'
 interface Props {
   open: boolean
   entry?: TimeEntry | null
+  defaultProjectId?: string
+  defaultTaskId?: string
   projects: Project[]
   tasks: Task[]
   workers: Worker[]
@@ -18,7 +20,7 @@ interface Props {
   toast: (msg: string) => void
 }
 
-export function TimeEntryModal({ open, entry, projects, tasks, workers, contractors, onSave, onDelete, onClose, toast }: Props) {
+export function TimeEntryModal({ open, entry, defaultProjectId, defaultTaskId, projects, tasks, workers, contractors, onSave, onDelete, onClose, toast }: Props) {
   const [projectId, setProjectId] = useState('')
   const [taskId, setTaskId] = useState('')
   const [workerId, setWorkerId] = useState('')
@@ -29,7 +31,7 @@ export function TimeEntryModal({ open, entry, projects, tasks, workers, contract
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (entry) {
+    if (entry?.id) {
       const task = tasks.find(t => t.id === entry.task_id)
       setProjectId(task?.project_id || '')
       setTaskId(entry.task_id)
@@ -39,11 +41,12 @@ export function TimeEntryModal({ open, entry, projects, tasks, workers, contract
       setDate(entry.date)
       setNotes(entry.notes || '')
     } else {
-      setProjectId(projects[0]?.id || '')
-      setTaskId(''); setWorkerId(''); setWorkerType('worker')
+      setProjectId(defaultProjectId || projects[0]?.id || '')
+      setTaskId(defaultTaskId || '')
+      setWorkerId(''); setWorkerType('worker')
       setHours(''); setDate(todayStr()); setNotes('')
     }
-  }, [entry, open, projects, tasks])
+  }, [entry, open, defaultProjectId, defaultTaskId, projects, tasks])
 
   const projectTasks = tasks.filter(t => t.project_id === projectId)
   const milestones = projectTasks.filter(t => (t.kind || 'milestone') === 'milestone' && !t.parent_milestone_id)
@@ -64,7 +67,6 @@ export function TimeEntryModal({ open, entry, projects, tasks, workers, contract
       notes: notes.trim(),
     })
     setSaving(false)
-    onClose()
   }
 
   async function handleDelete() {

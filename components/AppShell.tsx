@@ -33,7 +33,7 @@ type ModalState =
   | { kind: 'subtask'; task?: Task; projectId?: string; milestoneId?: string }
   | { kind: 'dir'; type: DirType; item?: Client | Contractor | Worker }
   | { kind: 'contact'; parentId: string; contact?: Contact }
-  | { kind: 'timeentry'; entry?: TimeEntry }
+  | { kind: 'timeentry'; entry?: TimeEntry; defaultProjectId?: string; defaultTaskId?: string }
 
 export default function AppShell() {
   const { db, loading, saveProject, deleteProject, saveTask, deleteTask, saveDirEntry, deleteDirEntry, fetchAll } = useAppData()
@@ -295,7 +295,7 @@ export default function AppShell() {
             <ProjectMgmtView
               db={db} projectId={mgmtProjectId} entries={timeEntries} hoursByTask={hoursByTask}
               onBack={() => setMgmtProjectId(null)}
-              onLogTime={(taskId) => setModal({ kind: 'timeentry', entry: taskId ? { task_id: taskId } as TimeEntry : undefined })}
+              onLogTime={(taskId) => setModal({ kind: 'timeentry', defaultProjectId: mgmtProjectId || undefined, defaultTaskId: taskId || undefined })}
               onEditEntry={entry => setModal({ kind: 'timeentry', entry })}
               onEditMilestone={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: 'milestone', task: t }) }}
             />
@@ -362,6 +362,7 @@ export default function AppShell() {
       {modal.kind === 'timeentry' && (
         <TimeEntryModal
           open={true} entry={modal.entry}
+          defaultProjectId={modal.defaultProjectId} defaultTaskId={modal.defaultTaskId}
           projects={db.projects} tasks={db.tasks} workers={db.workers} contractors={db.contractors}
           onSave={async data => { await saveTimeEntry(data); setModal({ kind: 'none' }); toast(data.id ? 'Time entry updated' : 'Time logged') }}
           onDelete={async id => { await deleteTimeEntry(id); setModal({ kind: 'none' }); toast('Entry deleted') }}

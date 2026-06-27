@@ -13,6 +13,7 @@ import { SubView } from '@/components/views/SubView'
 import { DirectoryView } from '@/components/views/DirectoryView'
 import { ProfileView } from '@/components/views/ProfileView'
 import { TimeTrackingView } from '@/components/views/TimeTrackingView'
+import { UsersView } from '@/components/views/UsersView'
 import { ProjectMgmtView } from '@/components/views/ProjectMgmtView'
 import { ProjectModal } from '@/components/modals/ProjectModal'
 import { TaskModal } from '@/components/modals/TaskModal'
@@ -241,6 +242,9 @@ export default function AppShell() {
               <div className={`nav${activeView === 'timetracking' && !mgmtProjectId ? ' act' : ''}`} onClick={() => { goView('timetracking'); setMgmtProjectId(null) }}>
                 <span>⏱</span>Time Tracking
               </div>
+              <div className={`nav${view === 'users' as string ? ' act' : ''}`} onClick={() => { setView('users' as ViewName); setProfile(null); setMgmtProjectId(null) }}>
+                <span>👥</span>Users
+              </div>
               <div className="s-hd">PROJECT MGMT</div>
               {db.projects.map(p => (
                 <div key={p.id} className={`nav${mgmtProjectId === p.id ? ' act' : ''}`} onClick={() => { setMgmtProjectId(p.id); setView('timetracking'); setProfile(null) }}>
@@ -314,6 +318,8 @@ export default function AppShell() {
               onAddPayment={budget.addPayment} onUpdatePayment={budget.updatePayment} onDeletePayment={budget.deletePayment}
               onImportScope={budget.importScope}
             />
+          ) : (view as string) === 'users' && isAdmin ? (
+            <UsersView />
           ) : view === 'timetracking' && isAdmin ? (
             <TimeTrackingView
               db={db} entries={timeEntries} hoursByTask={hoursByTask}

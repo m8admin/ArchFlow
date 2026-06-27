@@ -130,6 +130,11 @@ export function BoardView({ db, filterClient, filterStatus, zoom, setZoom, setFi
           {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         <div className="tb-r">
+          <button className="btn bsm" onClick={() => {
+            const allIds = projects.map(p => p.id)
+            const allCollapsed = allIds.every(id => collapsed[id])
+            setCollapsed(allCollapsed ? {} : Object.fromEntries(allIds.map(id => [id, true])))
+          }}>{projects.every(p => collapsed[p.id]) ? '▼ Expand all' : '▶ Collapse all'}</button>
           <button className="btn bsm" onClick={() => onNewMilestone()}>+ Add milestone</button>
           <button className="btn bp bsm" onClick={onNewProject}>+ New project</button>
         </div>

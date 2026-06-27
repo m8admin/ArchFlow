@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react'
 import { useAppData } from '@/hooks/useAppData'
+import { useUserProfile } from '@/hooks/useUserProfile'
+import { useTimeEntries } from '@/hooks/useTimeEntries'
 import { useToast } from '@/hooks/useToast'
 import { ToastContainer } from '@/components/ui/Toast'
 import { BoardView } from '@/components/views/BoardView'
@@ -9,12 +11,14 @@ import { GanttView } from '@/components/views/GanttView'
 import { SubView } from '@/components/views/SubView'
 import { DirectoryView } from '@/components/views/DirectoryView'
 import { ProfileView } from '@/components/views/ProfileView'
+import { TimeTrackingView } from '@/components/views/TimeTrackingView'
 import { ProjectModal } from '@/components/modals/ProjectModal'
 import { TaskModal } from '@/components/modals/TaskModal'
 import { DirModal } from '@/components/modals/DirModal'
 import { ContactModal } from '@/components/modals/ContactModal'
+import { TimeEntryModal } from '@/components/modals/TimeEntryModal'
 import { createClient } from '@/lib/supabase/client'
-import type { ViewName, ZoomLevel, DirType, ProfileView as PV, Project, Task, Client, Contractor, Worker, Contact } from '@/lib/types'
+import type { ViewName, ZoomLevel, DirType, ProfileView as PV, Project, Task, Client, Contractor, Worker, Contact, TimeEntry } from '@/lib/types'
 import { STATUS_META } from '@/lib/types'
 import { clientColor } from '@/lib/utils'
 
@@ -28,9 +32,12 @@ type ModalState =
   | { kind: 'subtask'; task?: Task; projectId?: string; milestoneId?: string }
   | { kind: 'dir'; type: DirType; item?: Client | Contractor | Worker }
   | { kind: 'contact'; parentId: string; contact?: Contact }
+  | { kind: 'timeentry'; entry?: TimeEntry }
 
 export default function AppShell() {
   const { db, loading, saveProject, deleteProject, saveTask, deleteTask, saveDirEntry, deleteDirEntry, fetchAll } = useAppData()
+  const { isAdmin, loading: profileLoading } = useUserProfile()
+  const { entries: timeEntries, saveEntry: saveTimeEntry, deleteEntry: deleteTimeEntry, hoursByTask } = useTimeEntries(isAdmin)
   const { toasts, toast } = useToast()
   const supabase = createClient()
 
@@ -141,7 +148,7 @@ export default function AppShell() {
     { id: 'workers', label: 'Workers', icon: '👥' },
   ]
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--tx3)' }}>
         Loading ArchFlow…
@@ -217,6 +224,15 @@ export default function AppShell() {
               <span className="dot" style={{ background: v.col }} />{v.label}
             </div>
           ))}
+
+          {isAdmin && (
+            <>
+              <div className="s-hd">BACK OFFICE</div>
+              <div className={`nav${activeView === 'timetracking' ? ' act' : ''}`} onClick={() => goView('timetracking')}>
+                <span>⏱</span>Time Tracking
+              </div>
+            </>
+          )}
         </div>
 
         {/* Main content */}
@@ -245,6 +261,7 @@ export default function AppShell() {
               onNewMilestone={pid => setModal({ kind: 'milestone', projectId: pid })}
               onNewSubtask={(pid, mid) => setModal({ kind: 'subtask', projectId: pid, milestoneId: mid })}
               onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.kind === 'milestone' ? 'milestone' : 'subtask', task: t }) }}
+              isAdmin={isAdmin} hoursByTask={hoursByTask}
             />
           ) : view === 'gantt' ? (
             <GanttView
@@ -266,6 +283,12 @@ export default function AppShell() {
             <DirectoryView db={db} type="contractor" onOpenProfile={(t, id) => setProfile({ type: t, id })} onAddEntry={() => setModal({ kind: 'dir', type: 'contractor' })} />
           ) : view === 'workers' ? (
             <DirectoryView db={db} type="worker" onOpenProfile={(t, id) => setProfile({ type: t, id })} onAddEntry={() => setModal({ kind: 'dir', type: 'worker' })} />
+          ) : view === 'timetracking' && isAdmin ? (
+            <TimeTrackingView
+              db={db} entries={timeEntries} hoursByTask={hoursByTask}
+              onNewEntry={() => setModal({ kind: 'timeentry' })}
+              onEditEntry={entry => setModal({ kind: 'timeentry', entry })}
+            />
           ) : null}
         </div>
       </div>
@@ -315,6 +338,17 @@ export default function AppShell() {
           open={true} contact={modal.contact} projects={db.projects}
           onSave={ct => handleSaveContact(modal.parentId, ct)}
           onDelete={ctId => handleDeleteContact(modal.parentId, ctId)}
+          onClose={() => setModal({ kind: 'none' })}
+          toast={toast}
+        />
+      )}
+
+      {modal.kind === 'timeentry' && (
+        <TimeEntryModal
+          open={true} entry={modal.entry}
+          projects={db.projects} tasks={db.tasks} workers={db.workers} contractors={db.contractors}
+          onSave={async data => { await saveTimeEntry(data); setModal({ kind: 'none' }); toast(data.id ? 'Time entry updated' : 'Time logged') }}
+          onDelete={async id => { await deleteTimeEntry(id); setModal({ kind: 'none' }); toast('Entry deleted') }}
           onClose={() => setModal({ kind: 'none' })}
           toast={toast}
         />

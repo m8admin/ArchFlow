@@ -99,7 +99,25 @@ export const STATUS_META: Record<Status, { label: string; col: string; bg: strin
   delayed:  { label: 'Delayed',  col: '#B83232', bg: '#FDEDED' },
 }
 
-export type ViewName = 'board' | 'gantt' | 'subview' | 'clients' | 'contractors' | 'workers'
+export type UserRole = 'admin' | 'member'
+
+export interface UserProfile {
+  id: string
+  auth_user_id: string
+  role: UserRole
+}
+
+export interface TimeEntry {
+  id: string
+  task_id: string
+  worker_id: string
+  worker_type: 'worker' | 'contractor'
+  hours: number
+  date: string
+  notes: string
+}
+
+export type ViewName = 'board' | 'gantt' | 'subview' | 'clients' | 'contractors' | 'workers' | 'timetracking'
 export type ZoomLevel = 'day' | 'week' | 'month' | '3month' | 'year'
 export type DirType = 'client' | 'contractor' | 'worker'
 

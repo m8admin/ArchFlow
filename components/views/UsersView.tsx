@@ -17,17 +17,13 @@ export function UsersView() {
   const supabase = supabaseRef.current
 
   async function fetchUsers() {
-    const { data } = await supabase.from('user_profiles').select('*')
+    const { data } = await supabase.from('user_profiles').select('*').order('created_at')
     if (!data) { setLoading(false); return }
-
-    // Get emails from auth — we query user_profiles and match
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
-    const profiles = (data || []).map((p: { id: string; auth_user_id: string; role: string }) => ({
+    setUsers((data || []).map((p: { id: string; auth_user_id: string; role: string; email?: string }) => ({
       ...p,
       role: p.role as 'admin' | 'member',
-      email: p.auth_user_id === currentUser?.id ? currentUser?.email || '?' : p.auth_user_id.slice(0, 8) + '...',
-    }))
-    setUsers(profiles)
+      email: p.email || p.auth_user_id.slice(0, 8) + '...',
+    })))
     setLoading(false)
   }
 

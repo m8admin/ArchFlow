@@ -12,6 +12,7 @@ import { SubView } from '@/components/views/SubView'
 import { DirectoryView } from '@/components/views/DirectoryView'
 import { ProfileView } from '@/components/views/ProfileView'
 import { TimeTrackingView } from '@/components/views/TimeTrackingView'
+import { ProjectMgmtView } from '@/components/views/ProjectMgmtView'
 import { ProjectModal } from '@/components/modals/ProjectModal'
 import { TaskModal } from '@/components/modals/TaskModal'
 import { DirModal } from '@/components/modals/DirModal'
@@ -48,8 +49,9 @@ export default function AppShell() {
   const [zoom, setZoom] = useState<ZoomLevel>('week')
   const [modal, setModal] = useState<ModalState>({ kind: 'none' })
   const [exportOpen, setExportOpen] = useState(false)
+  const [mgmtProjectId, setMgmtProjectId] = useState<string | null>(null)
 
-  const goView = (v: ViewName) => { setView(v); setProfile(null) }
+  const goView = (v: ViewName) => { setView(v); setProfile(null); setMgmtProjectId(null) }
 
   // ── Project save (handles inline new client) ────────────────────────────────
   async function handleSaveProject(data: Omit<Project, 'id'> & { id?: string }) {
@@ -228,9 +230,15 @@ export default function AppShell() {
           {isAdmin && (
             <>
               <div className="s-hd">BACK OFFICE</div>
-              <div className={`nav${activeView === 'timetracking' ? ' act' : ''}`} onClick={() => goView('timetracking')}>
+              <div className={`nav${activeView === 'timetracking' && !mgmtProjectId ? ' act' : ''}`} onClick={() => { goView('timetracking'); setMgmtProjectId(null) }}>
                 <span>⏱</span>Time Tracking
               </div>
+              <div className="s-hd">PROJECT MGMT</div>
+              {db.projects.map(p => (
+                <div key={p.id} className={`nav${mgmtProjectId === p.id ? ' act' : ''}`} onClick={() => { setMgmtProjectId(p.id); setView('timetracking'); setProfile(null) }}>
+                  <span className="dot" style={{ background: clientColor(db.clients, p.client_id) }} />{p.name}
+                </div>
+              ))}
             </>
           )}
         </div>
@@ -283,6 +291,14 @@ export default function AppShell() {
             <DirectoryView db={db} type="contractor" onOpenProfile={(t, id) => setProfile({ type: t, id })} onAddEntry={() => setModal({ kind: 'dir', type: 'contractor' })} />
           ) : view === 'workers' ? (
             <DirectoryView db={db} type="worker" onOpenProfile={(t, id) => setProfile({ type: t, id })} onAddEntry={() => setModal({ kind: 'dir', type: 'worker' })} />
+          ) : view === 'timetracking' && isAdmin && mgmtProjectId ? (
+            <ProjectMgmtView
+              db={db} projectId={mgmtProjectId} entries={timeEntries} hoursByTask={hoursByTask}
+              onBack={() => setMgmtProjectId(null)}
+              onLogTime={(taskId) => setModal({ kind: 'timeentry', entry: taskId ? { task_id: taskId } as TimeEntry : undefined })}
+              onEditEntry={entry => setModal({ kind: 'timeentry', entry })}
+              onEditMilestone={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: 'milestone', task: t }) }}
+            />
           ) : view === 'timetracking' && isAdmin ? (
             <TimeTrackingView
               db={db} entries={timeEntries} hoursByTask={hoursByTask}

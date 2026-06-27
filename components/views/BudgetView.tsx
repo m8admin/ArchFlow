@@ -338,6 +338,7 @@ export function BudgetView({ project, buildings, floors, costItems, payments, mi
       <div className="sec-t" style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
         Expected Budget
         <button className="btn bxs" onClick={onAddCostItem}>+ Add line</button>
+        {costItems.length > 0 && <button className="btn bd bxs" onClick={async () => { if (confirm('Delete all budget lines?')) { for (const ci of costItems) await onDeleteCostItem(ci.id) } }}>Clear budget</button>}
       </div>
       <div className="tw" style={{ marginBottom: 14 }}>
         <table>

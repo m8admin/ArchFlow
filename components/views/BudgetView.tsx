@@ -179,66 +179,82 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
         {buildings.length > 0 && <button className="btn bd bxs" onClick={async () => { if (confirm('Delete all buildings and floor data for this project?')) { for (const b of buildings) await onDeleteBuilding(b.id) } }}>Clear all scope</button>}
       </div>
 
-      {buildings.map(bld => {
-        const bldFloors = floors.filter(f => f.building_id === bld.id)
-        const isDetailed = detailedBuildings[bld.id] !== false
-        const bldSqm = bldFloors.reduce((a, f) => a + Number(f.typical_sqm), 0)
+      <div className="tw" style={{ marginBottom: 12 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Lot</th><th>Building</th><th>Typical Floor #</th><th>Floors in Typical</th><th>Typical SQM</th><th>Notes</th>
+              <th style={{ width: 36 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {!buildings.length ? (
+              <tr className="er"><td colSpan={7}>No scope data — use + Add Building or Import Excel above.</td></tr>
+            ) : buildings.map(bld => {
+              const bldFloors = floors.filter(f => f.building_id === bld.id)
+              // Parse lot and building from name (format: "Lot X - Building Y" or "Building Y")
+              const nameParts = bld.name.match(/^(?:Lot\s+(.+?)\s*-\s*)?(?:Building\s+)?(.+)$/i)
+              const lotDisplay = nameParts?.[1] || ''
+              const bldDisplay = nameParts?.[2] || bld.name
+              const bldSqm = bldFloors.reduce((a, f) => a + Number(f.typical_sqm), 0)
 
-        return (
-          <div key={bld.id} className="tw" style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--sf2)', borderBottom: '1px solid var(--bd)' }}>
-              <InlineInput value={bld.name} onChange={v => onUpdateBuilding(bld.id, { name: v })} style={{ fontWeight: 700, fontSize: 13 }} />
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <button className={`btn bxs${isDetailed ? '' : ' bp'}`} onClick={() => setDetailedBuildings(p => ({ ...p, [bld.id]: !isDetailed }))}>
-                  {isDetailed ? 'Totals' : 'Detailed'}
-                </button>
-                <button className="btn bxs" onClick={() => onAddFloor(bld.id)}>+ Floor</button>
-                <button className="btn bd bxs" onClick={() => { if (confirm('Delete building?')) onDeleteBuilding(bld.id) }}>×</button>
-              </div>
-            </div>
-
-            {isDetailed ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Typical #</th><th>Floor Label</th><th>Typical SQM</th>
-                    <th>Notes</th><th style={{ width: 36 }}></th>
+              if (!bldFloors.length) {
+                return (
+                  <tr key={bld.id}>
+                    <td><InlineInput value={lotDisplay} onChange={v => { const b = v ? `Lot ${v} - Building ${bldDisplay}` : `Building ${bldDisplay}`; onUpdateBuilding(bld.id, { name: b }) }} placeholder="Lot" /></td>
+                    <td><InlineInput value={bldDisplay} onChange={v => { const b = lotDisplay ? `Lot ${lotDisplay} - Building ${v}` : `Building ${v}`; onUpdateBuilding(bld.id, { name: b }) }} placeholder="Bld" /></td>
+                    <td colSpan={4} style={{ fontSize: 12, color: 'var(--tx3)' }}>No floors — <button className="btn bxs" onClick={() => onAddFloor(bld.id)}>+ Add</button></td>
+                    <td><button className="btn bd bxs" onClick={() => { if (confirm('Delete building?')) onDeleteBuilding(bld.id) }}>×</button></td>
                   </tr>
-                </thead>
-                <tbody>
-                  {bldFloors.map(fl => (
-                    <tr key={fl.id}>
-                      <td><InlineInput value={fl.type_name} onChange={v => onUpdateFloor(fl.id, { type_name: v })} placeholder="Type" /></td>
-                      <td><InlineInput value={fl.floor_label} onChange={v => onUpdateFloor(fl.id, { floor_label: v })} placeholder="e.g. 1-7" /></td>
-                      <td><InlineInput value={fl.typical_sqm} onChange={v => onUpdateFloor(fl.id, { typical_sqm: parseFloat(v) || 0 })} type="number" /></td>
-                      <td><InlineInput value={fl.notes} onChange={v => onUpdateFloor(fl.id, { notes: v })} placeholder="Notes" /></td>
-                      <td><button className="btn bd bxs" onClick={() => onDeleteFloor(fl.id)}>×</button></td>
-                    </tr>
-                  ))}
-                  {!bldFloors.length && (
-                    <tr className="er"><td colSpan={5}>No floors — <button className="btn bxs" onClick={() => onAddFloor(bld.id)}>+ Add floor</button></td></tr>
-                  )}
-                </tbody>
-              </table>
-            ) : null}
+                )
+              }
 
-            <div style={{ display: 'flex', gap: 16, padding: '8px 12px', background: 'var(--sf2)', borderTop: '1px solid var(--bd)', fontSize: 12, fontWeight: 700, color: 'var(--tx2)' }}>
-              <span>Typicals: {bldFloors.length}</span>
-              <span>Total SQM: {parseFloat(bldSqm.toFixed(2))}</span>
-            </div>
-          </div>
-        )
-      })}
-
-      {buildings.length > 0 && (
-        <div style={{ display: 'flex', gap: 16, padding: '10px 14px', marginBottom: 18, fontSize: 13, fontWeight: 700, color: 'var(--tx)', background: 'var(--sf)', border: '1px solid var(--bd)', borderRadius: 'var(--rl)' }}>
-          <span>Project Total —</span>
-          <span>Buildings: {buildings.length}</span>
-          <span>Typicals: {totalTypicals}</span>
-          <span>Total SQM: {parseFloat(projectTotalSqm.toFixed(2))}</span>
-          <span>Avg SQM/Typical: {parseFloat(avgSqmPerTypical.toFixed(2))}</span>
-        </div>
-      )}
+              return [
+                ...bldFloors.map((fl, fi) => (
+                  <tr key={fl.id} style={fi === 0 ? { borderTop: '2px solid var(--bd)' } : undefined}>
+                    {fi === 0 && (
+                      <>
+                        <td rowSpan={bldFloors.length + 1} style={{ verticalAlign: 'top', fontWeight: 600, fontSize: 12 }}>
+                          <InlineInput value={lotDisplay} onChange={v => { const b = v ? `Lot ${v} - Building ${bldDisplay}` : `Building ${bldDisplay}`; onUpdateBuilding(bld.id, { name: b }) }} placeholder="Lot" />
+                        </td>
+                        <td rowSpan={bldFloors.length + 1} style={{ verticalAlign: 'top', fontWeight: 600, fontSize: 12 }}>
+                          <InlineInput value={bldDisplay} onChange={v => { const b = lotDisplay ? `Lot ${lotDisplay} - Building ${v}` : `Building ${v}`; onUpdateBuilding(bld.id, { name: b }) }} placeholder="Bld" style={{ fontWeight: 700 }} />
+                        </td>
+                      </>
+                    )}
+                    <td><InlineInput value={fl.type_name} onChange={v => onUpdateFloor(fl.id, { type_name: v })} placeholder="#" /></td>
+                    <td><InlineInput value={fl.floor_label} onChange={v => onUpdateFloor(fl.id, { floor_label: v })} placeholder="e.g. 1-7" /></td>
+                    <td><InlineInput value={fl.typical_sqm} onChange={v => onUpdateFloor(fl.id, { typical_sqm: parseFloat(v) || 0 })} type="number" /></td>
+                    <td><InlineInput value={fl.notes} onChange={v => onUpdateFloor(fl.id, { notes: v })} placeholder="Notes" /></td>
+                    <td><button className="btn bd bxs" onClick={() => onDeleteFloor(fl.id)}>×</button></td>
+                  </tr>
+                )),
+                <tr key={`${bld.id}-total`} style={{ background: 'var(--sf2)' }}>
+                  <td colSpan={2} style={{ fontSize: 11, fontWeight: 700, color: 'var(--tx3)', textAlign: 'right', padding: '4px 8px' }}>{bldFloors.length} typicals</td>
+                  <td style={{ fontSize: 11, fontWeight: 700, color: 'var(--tx2)', padding: '4px 8px' }}>{parseFloat(bldSqm.toFixed(2))}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn bxs" onClick={() => onAddFloor(bld.id)}>+</button>
+                      <button className="btn bd bxs" onClick={() => { if (confirm('Delete building and all its floors?')) onDeleteBuilding(bld.id) }}>× Bld</button>
+                    </div>
+                  </td>
+                  <td></td>
+                </tr>,
+              ]
+            })}
+            {buildings.length > 0 && (
+              <tr style={{ fontWeight: 700, borderTop: '3px solid var(--bd)', background: 'var(--sf2)' }}>
+                <td colSpan={2} style={{ padding: '8px', fontSize: 12 }}>Project Total — {buildings.length} buildings</td>
+                <td style={{ fontSize: 12, padding: '8px' }}>{totalTypicals} typicals</td>
+                <td></td>
+                <td style={{ fontSize: 12, padding: '8px', fontWeight: 700 }}>{parseFloat(projectTotalSqm.toFixed(2))}</td>
+                <td style={{ fontSize: 11, color: 'var(--tx3)', padding: '8px' }}>Avg: {parseFloat(avgSqmPerTypical.toFixed(2))} sqm/typ</td>
+                <td></td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* ── 2. Budget ── */}
       <div className="sec-t" style={{ fontSize: 14, fontWeight: 700 }}>Coefficients</div>

@@ -102,9 +102,9 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
           const row = rows[i]
           if (!row || !row.length) continue
 
-          // Stop parsing when we hit budget/payment sections
+          // Stop parsing when we hit budget/payment sections or empty building rows
           const rowText = row.map((c: unknown) => String(c || '')).join(' ')
-          if (rowText.includes('תקציב') || rowText.includes('אבני דרך') || rowText.includes('Budget') || rowText.includes('Payment')) break
+          if (rowText.includes('תקציב') || rowText.includes('אבני דרך') || rowText.includes('אבן דרך') || rowText.includes('Budget') || rowText.includes('Payment') || rowText.includes('עלות') || rowText.includes('רווח')) break
 
           const bldVal = row[colBuilding]
           const typeVal = row[colType]
@@ -282,8 +282,8 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
             <div style={{ display: 'flex', gap: 16, padding: '8px 12px', background: 'var(--sf2)', borderTop: '1px solid var(--bd)', fontSize: 12, fontWeight: 700, color: 'var(--tx2)' }}>
               <span>Floors: {totalFloors}</span>
               <span>SQM: {totalSqm.toLocaleString()}</span>
-              <span>Phase A: {Math.round(totalPhA * 100) / 100}h</span>
-              <span>Phase B: {Math.round(totalPhB * 100) / 100}h</span>
+              <span>Phase A: {parseFloat(totalPhA.toFixed(2))}h</span>
+              <span>Phase B: {parseFloat(totalPhB.toFixed(2))}h</span>
             </div>
           </div>
         )
@@ -296,8 +296,8 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
           <span>Buildings: {buildings.length}</span>
           <span>Floors: {projectTotalFloors}</span>
           <span>SQM: {projectTotalSqm.toLocaleString()}</span>
-          <span>Phase A: {Math.round(projectTotalPhaseA * 100) / 100}h</span>
-          <span>Phase B: {Math.round(projectTotalPhaseB * 100) / 100}h</span>
+          <span>Phase A: {parseFloat(projectTotalPhaseA.toFixed(2))}h</span>
+          <span>Phase B: {parseFloat(projectTotalPhaseB.toFixed(2))}h</span>
         </div>
       )}
 

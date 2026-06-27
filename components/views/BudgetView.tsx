@@ -101,12 +101,21 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
         for (let i = (headerIdx >= 0 ? headerIdx + 1 : 0); i < rows.length; i++) {
           const row = rows[i]
           if (!row || !row.length) continue
+
+          // Stop parsing when we hit budget/payment sections
+          const rowText = row.map((c: unknown) => String(c || '')).join(' ')
+          if (rowText.includes('תקציב') || rowText.includes('אבני דרך') || rowText.includes('Budget') || rowText.includes('Payment')) break
+
           const bldVal = row[colBuilding]
           const typeVal = row[colType]
           const floorLabel = String(row[colFloorLabel] || '').trim()
 
           if (typeof bldVal === 'string' && (bldVal === 'Building' || bldVal === 'בניין')) continue
 
+          // Totals row: typeVal is a large number and floorLabel is empty — skip
+          if (typeVal != null && !floorLabel) continue
+
+          // New building: has building number AND a type number AND a floor label
           if (bldVal != null && bldVal !== '' && typeof typeVal === 'number' && floorLabel) {
             current = { name: `Building ${bldVal}`, floors: [] }
             parsed.push(current)
@@ -120,9 +129,9 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
               floor_label: floorLabel,
               typical_floors: 1,
               floor_count: Number(row[colFloorCount]) || 1,
-              typical_sqm: Number(row[colSqm]) || 0,
-              phase_a_hours: Number(row[colPhaseA]) || 0,
-              phase_b_hours: Number(row[colPhaseB]) || 0,
+              typical_sqm: Math.round((Number(row[colSqm]) || 0) * 100) / 100,
+              phase_a_hours: Math.round((Number(row[colPhaseA]) || 0) * 100) / 100,
+              phase_b_hours: Math.round((Number(row[colPhaseB]) || 0) * 100) / 100,
               notes: String(row[colSheet] || row[colNotes] || '').trim(),
             })
           }
@@ -273,8 +282,8 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
             <div style={{ display: 'flex', gap: 16, padding: '8px 12px', background: 'var(--sf2)', borderTop: '1px solid var(--bd)', fontSize: 12, fontWeight: 700, color: 'var(--tx2)' }}>
               <span>Floors: {totalFloors}</span>
               <span>SQM: {totalSqm.toLocaleString()}</span>
-              <span>Phase A: {totalPhA}h</span>
-              <span>Phase B: {totalPhB}h</span>
+              <span>Phase A: {Math.round(totalPhA * 100) / 100}h</span>
+              <span>Phase B: {Math.round(totalPhB * 100) / 100}h</span>
             </div>
           </div>
         )
@@ -287,8 +296,8 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
           <span>Buildings: {buildings.length}</span>
           <span>Floors: {projectTotalFloors}</span>
           <span>SQM: {projectTotalSqm.toLocaleString()}</span>
-          <span>Phase A: {projectTotalPhaseA}h</span>
-          <span>Phase B: {projectTotalPhaseB}h</span>
+          <span>Phase A: {Math.round(projectTotalPhaseA * 100) / 100}h</span>
+          <span>Phase B: {Math.round(projectTotalPhaseB * 100) / 100}h</span>
         </div>
       )}
 

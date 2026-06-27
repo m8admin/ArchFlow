@@ -30,7 +30,6 @@ function InlineInput({ value, onChange, type = 'text', style, placeholder }: { v
     <input
       value={value}
       onChange={e => onChange(e.target.value)}
-      onBlur={e => onChange(e.target.value)}
       type={type}
       placeholder={placeholder}
       style={{ background: 'transparent', border: 'none', borderBottom: '1px solid transparent', padding: '2px 4px', fontSize: 12, width: '100%', ...style }}
@@ -40,11 +39,14 @@ function InlineInput({ value, onChange, type = 'text', style, placeholder }: { v
   )
 }
 
+function fmt$(n: number) { return '₪' + n.toLocaleString(undefined, { maximumFractionDigits: 0 }) }
+
 export function BudgetView({ project, buildings, floors, costItems, payments, onUpdateProject, onAddBuilding, onUpdateBuilding, onDeleteBuilding, onAddFloor, onUpdateFloor, onDeleteFloor, onAddCostItem, onUpdateCostItem, onDeleteCostItem, onAddPayment, onUpdatePayment, onDeletePayment, onImportScope }: Props) {
   const [detailedBuildings, setDetailedBuildings] = useState<Record<string, boolean>>({})
   const [importing, setImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // ── Import Excel ──
   async function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -61,7 +63,6 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
       const parsed: ParsedBuilding[] = []
       let current: ParsedBuilding | null = null
 
-      // Find the header row to detect format
       const headerRow = rows.find((r: unknown[]) => r.some(c => {
         const s = String(c || '').toLowerCase()
         return s === 'building' || s === 'בניין' || s === 'lot'
@@ -69,64 +70,48 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
       const headerIdx = headerRow ? rows.indexOf(headerRow) : -1
       const startIdx = headerIdx >= 0 ? headerIdx + 1 : 0
 
-      // Detect column positions from header
       const hdr: Record<string, number> = {}
       if (headerRow) {
         headerRow.forEach((h: unknown, i: number) => {
           const s = String(h || '').toLowerCase().trim()
           if (s === 'lot' || s === 'מגרש') hdr.lot = i
           if (s === 'building' || s === 'בניין') hdr.building = i
-          if (s.includes('typical') && s.includes('#') || s === 'טיפוס' || s.includes('typical floor')) hdr.type = i
-          if (s.includes('floor') && s.includes('in') || s === 'קומות טיפוסיות' || s.includes('floor label')) hdr.floorLabel = i
+          if (s.includes('typical') && s.includes('#') || s.includes('typical floor')) hdr.type = i
+          if (s.includes('floor') && s.includes('in') || s.includes('floor label')) hdr.floorLabel = i
           if (s.includes('typical sqm') || s.includes('מ"ר טיפוסי')) hdr.sqm = i
           if (s.includes('# of floor') || s === 'מספר קומות') hdr.floorCount = i
-          if (s.includes('phase a') || s.includes('שלב א') || s.includes('hours phase a')) hdr.phaseA = i
-          if (s.includes('phase b') || s.includes('שלב ב') || s.includes('hours phase b')) hdr.phaseB = i
+          if (s.includes('phase a') || s.includes('שלב א')) hdr.phaseA = i
+          if (s.includes('phase b') || s.includes('שלב ב')) hdr.phaseB = i
           if (s === 'notes' || s === 'הערות') hdr.notes = i
-          if (s === 'sheet') hdr.sheet = i
         })
       }
 
-      // Determine format based on detected columns
-      // Format C: Lot/Building/Typical#/FloorsInTypical/TypicalSQM/Notes (new clean format)
-      // Format A: Building#/Typical#/Sheet/FloorLabel/Count/SQM/PhA/PhB
-      // Format B: col2=Building, col3=Type, col4=Label (old Sirkin)
-
       const hasLot = hdr.lot !== undefined
-      const hasBuildingCol = hdr.building !== undefined
 
       for (let i = startIdx; i < rows.length; i++) {
         const row = rows[i]
         if (!row || !row.length) continue
-
-        // Stop at budget/totals/payment sections
         const rowText = row.map((c: unknown) => String(c || '')).join(' ')
         if (rowText.includes('Budget') || rowText.includes('תקציב') || rowText.includes('אבני דרך') || rowText.includes('עלות') || rowText.includes('רווח') || rowText.includes('Payment')) break
         if (String(row[0] || '').toLowerCase() === 'totals' || String(row[0] || '').includes('סה"כ')) break
 
-        // Determine column positions (with fallbacks)
-        const cLot = hdr.lot ?? -1
         const cBld = hdr.building ?? (hasLot ? 1 : 0)
         const cType = hdr.type ?? (hasLot ? 2 : 1)
         const cLabel = hdr.floorLabel ?? (hasLot ? 3 : 3)
-        const cSqm = hdr.sqm ?? (hasLot ? 4 : (hdr.floorCount !== undefined ? hdr.floorCount + 1 : 5))
+        const cSqm = hdr.sqm ?? (hasLot ? 4 : 5)
         const cNotes = hdr.notes ?? (hasLot ? 5 : -1)
+        const cLot = hdr.lot ?? -1
         const cPhA = hdr.phaseA ?? -1
         const cPhB = hdr.phaseB ?? -1
         const cCount = hdr.floorCount ?? -1
-        const cSheet = hdr.sheet ?? -1
 
         const bldVal = row[cBld]
         const typeVal = row[cType]
         const floorLabel = String(row[cLabel] || '').trim()
 
-        // Skip header-like rows
         if (typeof bldVal === 'string' && (bldVal.toLowerCase() === 'building' || bldVal === 'בניין')) continue
-
-        // Totals row: has type number but no floor label
         if (typeVal != null && !floorLabel) continue
 
-        // New building: building column has a value
         if (bldVal != null && bldVal !== '' && typeof typeVal === 'number' && floorLabel) {
           const lot = cLot >= 0 && row[cLot] != null && row[cLot] !== '' ? `Lot ${row[cLot]} - ` : ''
           current = { name: `${lot}Building ${bldVal}`, floors: [] }
@@ -135,7 +120,6 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
 
         if (typeVal == null && !floorLabel) continue
 
-        // Floor row
         if (current && typeof typeVal === 'number' && floorLabel) {
           current.floors.push({
             type_name: String(typeVal),
@@ -145,13 +129,13 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
             typical_sqm: Math.round((Number(row[cSqm]) || 0) * 100) / 100,
             phase_a_hours: cPhA >= 0 ? Math.round((Number(row[cPhA]) || 0) * 100) / 100 : 0,
             phase_b_hours: cPhB >= 0 ? Math.round((Number(row[cPhB]) || 0) * 100) / 100 : 0,
-            notes: String(row[cNotes] || row[cSheet] || '').trim(),
+            notes: String(row[cNotes] || '').trim(),
           })
         }
       }
 
       if (parsed.length === 0) {
-        alert('No buildings found in the spreadsheet. Make sure it follows the expected format.')
+        alert('No buildings found in the spreadsheet.')
       } else {
         await onImportScope({ buildings: parsed })
         alert(`Imported ${parsed.length} building(s) with ${parsed.reduce((a, b) => a + b.floors.length, 0)} floor types.`)
@@ -164,44 +148,29 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  // ── Computed values ──
   const clientFee = Number(project.client_fee) || 0
   const vatRate = Number(project.vat_rate) || 18
   const clientFeeInclVat = clientFee * (1 + vatRate / 100)
-  const totalCost = costItems.reduce((a, ci) => a + (Number(ci.rate) * Number(ci.planned_hours) * Number(ci.multiplier)), 0)
-  const profit = clientFee - totalCost
-  const margin = clientFee > 0 ? (profit / clientFee) * 100 : 0
 
   // Scope totals
-  const projectTotalFloors = floors.reduce((a, f) => a + Number(f.floor_count), 0)
-  const projectTotalSqm = floors.reduce((a, f) => a + Number(f.typical_sqm) * Number(f.floor_count), 0)
-  const projectTotalPhaseA = floors.reduce((a, f) => a + Number(f.phase_a_hours), 0)
-  const projectTotalPhaseB = floors.reduce((a, f) => a + Number(f.phase_b_hours), 0)
+  const totalTypicals = floors.length
+  const projectTotalSqm = floors.reduce((a, f) => a + Number(f.typical_sqm), 0)
+  const avgSqmPerTypical = totalTypicals > 0 ? projectTotalSqm / totalTypicals : 0
+
+  // Budget: expected
+  const expItems = costItems.filter(ci => ci.category !== 'other' || ci.description)
+  const totalExpCost = costItems.reduce((a, ci) => a + (Number(ci.rate) * Number(ci.planned_hours) * Number(ci.multiplier)), 0)
+  // Budget: actual
+  const totalActCost = costItems.reduce((a, ci) => a + (Number(ci.actual_cost) || 0), 0)
+  const profit = clientFee - totalExpCost
+  const margin = clientFee > 0 ? (profit / clientFee) * 100 : 0
+  const actualProfit = clientFee - totalActCost
+  const actualMargin = clientFee > 0 ? (actualProfit / clientFee) * 100 : 0
 
   return (
     <div>
-      {/* ── Financials Summary ── */}
-      <div className="sstrip">
-        <div className="sc">
-          <div className="sc-l">CLIENT FEE (excl. VAT)</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 13, color: 'var(--tx3)' }}>₪</span>
-            <input type="number" value={clientFee || ''} onChange={e => onUpdateProject({ client_fee: parseFloat(e.target.value) || 0 } as Partial<Project>)} style={{ fontSize: 20, fontWeight: 700, border: 'none', background: 'transparent', width: 120, padding: 0 }} />
-          </div>
-        </div>
-        <div className="sc">
-          <div className="sc-l">VAT RATE</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input type="number" value={vatRate} onChange={e => onUpdateProject({ vat_rate: parseFloat(e.target.value) || 18 } as Partial<Project>)} style={{ fontSize: 20, fontWeight: 700, border: 'none', background: 'transparent', width: 50, padding: 0 }} />
-            <span style={{ fontSize: 13, color: 'var(--tx3)' }}>%</span>
-          </div>
-        </div>
-        <div className="sc"><div className="sc-l">INCL. VAT</div><div className="sc-v">₪{clientFeeInclVat.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div>
-        <div className="sc"><div className="sc-l">TOTAL COST</div><div className="sc-v">₪{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div>
-        <div className="sc"><div className="sc-l">PROFIT</div><div className="sc-v" style={{ color: profit >= 0 ? 'var(--gn)' : 'var(--rd)' }}>₪{profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div>
-        <div className="sc"><div className="sc-l">MARGIN</div><div className="sc-v" style={{ color: margin >= 0 ? 'var(--gn)' : 'var(--rd)' }}>{margin.toFixed(0)}%</div></div>
-      </div>
-
-      {/* ── Scope Breakdown ── */}
+      {/* ── 1. Scope Breakdown ── */}
       <div className="sec-t" style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
         Scope Breakdown
         <button className="btn bxs" onClick={() => { const name = prompt('Building name:'); if (name) onAddBuilding(name) }}>+ Add Building</button>
@@ -213,17 +182,12 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
       {buildings.map(bld => {
         const bldFloors = floors.filter(f => f.building_id === bld.id)
         const isDetailed = detailedBuildings[bld.id] !== false
-        const totalFloors = bldFloors.reduce((a, f) => a + Number(f.floor_count), 0)
-        const totalSqm = bldFloors.reduce((a, f) => a + Number(f.typical_sqm) * Number(f.floor_count), 0)
-        const totalPhA = bldFloors.reduce((a, f) => a + Number(f.phase_a_hours), 0)
-        const totalPhB = bldFloors.reduce((a, f) => a + Number(f.phase_b_hours), 0)
+        const bldSqm = bldFloors.reduce((a, f) => a + Number(f.typical_sqm), 0)
 
         return (
           <div key={bld.id} className="tw" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--sf2)', borderBottom: '1px solid var(--bd)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <InlineInput value={bld.name} onChange={v => onUpdateBuilding(bld.id, { name: v })} style={{ fontWeight: 700, fontSize: 13 }} />
-              </div>
+              <InlineInput value={bld.name} onChange={v => onUpdateBuilding(bld.id, { name: v })} style={{ fontWeight: 700, fontSize: 13 }} />
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <button className={`btn bxs${isDetailed ? '' : ' bp'}`} onClick={() => setDetailedBuildings(p => ({ ...p, [bld.id]: !isDetailed }))}>
                   {isDetailed ? 'Totals' : 'Detailed'}
@@ -237,8 +201,7 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
               <table>
                 <thead>
                   <tr>
-                    <th>Typical #</th><th>Floor Label</th><th>Typ. Floors</th><th># of Floors</th>
-                    <th>SQM</th><th>Total SQM</th><th>Phase A hrs</th><th>Phase B hrs</th>
+                    <th>Typical #</th><th>Floor Label</th><th>Typical SQM</th>
                     <th>Notes</th><th style={{ width: 36 }}></th>
                   </tr>
                 </thead>
@@ -247,104 +210,151 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
                     <tr key={fl.id}>
                       <td><InlineInput value={fl.type_name} onChange={v => onUpdateFloor(fl.id, { type_name: v })} placeholder="Type" /></td>
                       <td><InlineInput value={fl.floor_label} onChange={v => onUpdateFloor(fl.id, { floor_label: v })} placeholder="e.g. 1-7" /></td>
-                      <td><InlineInput value={fl.typical_floors} onChange={v => onUpdateFloor(fl.id, { typical_floors: parseInt(v) || 0 })} type="number" /></td>
-                      <td><InlineInput value={fl.floor_count} onChange={v => onUpdateFloor(fl.id, { floor_count: parseInt(v) || 0 })} type="number" /></td>
                       <td><InlineInput value={fl.typical_sqm} onChange={v => onUpdateFloor(fl.id, { typical_sqm: parseFloat(v) || 0 })} type="number" /></td>
-                      <td style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px' }}>{(Number(fl.typical_sqm) * Number(fl.floor_count)).toLocaleString()}</td>
-                      <td><InlineInput value={fl.phase_a_hours} onChange={v => onUpdateFloor(fl.id, { phase_a_hours: parseFloat(v) || 0 })} type="number" /></td>
-                      <td><InlineInput value={fl.phase_b_hours} onChange={v => onUpdateFloor(fl.id, { phase_b_hours: parseFloat(v) || 0 })} type="number" /></td>
                       <td><InlineInput value={fl.notes} onChange={v => onUpdateFloor(fl.id, { notes: v })} placeholder="Notes" /></td>
                       <td><button className="btn bd bxs" onClick={() => onDeleteFloor(fl.id)}>×</button></td>
                     </tr>
                   ))}
                   {!bldFloors.length && (
-                    <tr className="er"><td colSpan={10}>No floors — <button className="btn bxs" onClick={() => onAddFloor(bld.id)}>+ Add floor</button></td></tr>
+                    <tr className="er"><td colSpan={5}>No floors — <button className="btn bxs" onClick={() => onAddFloor(bld.id)}>+ Add floor</button></td></tr>
                   )}
                 </tbody>
               </table>
             ) : null}
 
-            {/* Totals row */}
             <div style={{ display: 'flex', gap: 16, padding: '8px 12px', background: 'var(--sf2)', borderTop: '1px solid var(--bd)', fontSize: 12, fontWeight: 700, color: 'var(--tx2)' }}>
-              <span>Floors: {totalFloors}</span>
-              <span>SQM: {totalSqm.toLocaleString()}</span>
-              <span>Phase A: {parseFloat(totalPhA.toFixed(2))}h</span>
-              <span>Phase B: {parseFloat(totalPhB.toFixed(2))}h</span>
+              <span>Typicals: {bldFloors.length}</span>
+              <span>Total SQM: {parseFloat(bldSqm.toFixed(2))}</span>
             </div>
           </div>
         )
       })}
 
-      {/* Project scope totals */}
       {buildings.length > 0 && (
         <div style={{ display: 'flex', gap: 16, padding: '10px 14px', marginBottom: 18, fontSize: 13, fontWeight: 700, color: 'var(--tx)', background: 'var(--sf)', border: '1px solid var(--bd)', borderRadius: 'var(--rl)' }}>
           <span>Project Total —</span>
           <span>Buildings: {buildings.length}</span>
-          <span>Floors: {projectTotalFloors}</span>
-          <span>SQM: {projectTotalSqm.toLocaleString()}</span>
-          <span>Phase A: {parseFloat(projectTotalPhaseA.toFixed(2))}h</span>
-          <span>Phase B: {parseFloat(projectTotalPhaseB.toFixed(2))}h</span>
+          <span>Typicals: {totalTypicals}</span>
+          <span>Total SQM: {parseFloat(projectTotalSqm.toFixed(2))}</span>
+          <span>Avg SQM/Typical: {parseFloat(avgSqmPerTypical.toFixed(2))}</span>
         </div>
       )}
 
-      {/* ── Cost Items ── */}
-      <div className="sec-t" style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
-        Cost Items
-        <button className="btn bxs" onClick={onAddCostItem}>+ Add</button>
+      {/* ── 2. Budget ── */}
+      <div className="sec-t" style={{ fontSize: 14, fontWeight: 700 }}>Coefficients</div>
+      <div className="sstrip" style={{ marginBottom: 14 }}>
+        <div className="sc"><div className="sc-l">TOTAL TYPICALS</div><div className="sc-v">{totalTypicals}</div></div>
+        <div className="sc"><div className="sc-l">TOTAL SQM</div><div className="sc-v">{parseFloat(projectTotalSqm.toFixed(2))}</div></div>
+        <div className="sc"><div className="sc-l">AVG SQM / TYPICAL</div><div className="sc-v">{parseFloat(avgSqmPerTypical.toFixed(2))}</div></div>
       </div>
-      <div className="tw" style={{ marginBottom: 18 }}>
+
+      <div className="sec-t" style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
+        Expected Budget
+        <button className="btn bxs" onClick={onAddCostItem}>+ Add line</button>
+      </div>
+      <div className="tw" style={{ marginBottom: 14 }}>
         <table>
           <thead>
             <tr>
-              <th style={{ minWidth: 150 }}>Description</th>
-              <th>Category</th><th>Rate</th><th>Hours</th><th>×Mult</th>
-              <th>Planned Cost</th><th>Actual Cost</th><th>Variance</th>
+              <th style={{ minWidth: 140 }}>Expense</th>
+              <th>Rate (₪/hr)</th><th># Hours</th><th>Risk ×</th>
+              <th>Cost</th><th>Milestone</th><th>Assigned To</th>
               <th style={{ width: 36 }}></th>
             </tr>
           </thead>
           <tbody>
             {!costItems.length ? (
-              <tr className="er"><td colSpan={9}>No cost items — <button className="btn bxs" onClick={onAddCostItem}>+ Add</button></td></tr>
+              <tr className="er"><td colSpan={8}>No budget lines — <button className="btn bxs" onClick={onAddCostItem}>+ Add</button></td></tr>
             ) : costItems.map(ci => {
               const planned = Number(ci.rate) * Number(ci.planned_hours) * Number(ci.multiplier)
-              const actual = ci.actual_cost != null ? Number(ci.actual_cost) : null
-              const variance = actual != null ? actual - planned : null
               return (
                 <tr key={ci.id}>
-                  <td><InlineInput value={ci.description} onChange={v => onUpdateCostItem(ci.id, { description: v })} placeholder="Description" /></td>
-                  <td>
-                    <select value={ci.category} onChange={e => onUpdateCostItem(ci.id, { category: e.target.value as BudgetItem['category'] })} style={{ fontSize: 11, border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                      <option value="labor">Labor</option>
-                      <option value="subcontractor">Subcontractor</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </td>
+                  <td><InlineInput value={ci.description} onChange={v => onUpdateCostItem(ci.id, { description: v })} placeholder="e.g. Phase-A Modeller" /></td>
                   <td><InlineInput value={ci.rate} onChange={v => onUpdateCostItem(ci.id, { rate: parseFloat(v) || 0 })} type="number" /></td>
                   <td><InlineInput value={ci.planned_hours} onChange={v => onUpdateCostItem(ci.id, { planned_hours: parseFloat(v) || 0 })} type="number" /></td>
                   <td><InlineInput value={ci.multiplier} onChange={v => onUpdateCostItem(ci.id, { multiplier: parseFloat(v) || 1 })} type="number" /></td>
-                  <td style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px' }}>₪{planned.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                  <td><InlineInput value={actual ?? ''} onChange={v => onUpdateCostItem(ci.id, { actual_cost: v ? parseFloat(v) : null })} type="number" placeholder="—" /></td>
-                  <td style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px', color: variance != null ? (variance > 0 ? 'var(--rd)' : 'var(--gn)') : 'var(--tx3)' }}>
-                    {variance != null ? `${variance > 0 ? '+' : ''}₪${variance.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
-                  </td>
+                  <td style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px' }}>{fmt$(planned)}</td>
+                  <td><InlineInput value={ci.category} onChange={v => onUpdateCostItem(ci.id, { category: v as BudgetItem['category'] })} placeholder="A / B" style={{ width: 40 }} /></td>
+                  <td><InlineInput value={ci.notes} onChange={v => onUpdateCostItem(ci.id, { notes: v })} placeholder="Name" /></td>
                   <td><button className="btn bd bxs" onClick={() => onDeleteCostItem(ci.id)}>×</button></td>
                 </tr>
               )
             })}
             {costItems.length > 0 && (
               <tr style={{ fontWeight: 700, borderTop: '2px solid var(--bd)' }}>
-                <td colSpan={5} style={{ textAlign: 'right', padding: '6px 8px', fontSize: 12 }}>TOTAL</td>
-                <td style={{ fontSize: 12, padding: '6px 8px' }}>₪{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td style={{ fontSize: 12, padding: '6px 8px' }}>₪{costItems.reduce((a, ci) => a + (Number(ci.actual_cost) || 0), 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td colSpan={2}></td>
+                <td colSpan={4} style={{ textAlign: 'right', padding: '6px 8px', fontSize: 12 }}>TOTAL OPERATIONAL BUDGET</td>
+                <td style={{ fontSize: 12, padding: '6px 8px' }}>{fmt$(totalExpCost)}</td>
+                <td colSpan={3}></td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* ── Payment Milestones ── */}
-      <div className="sec-t" style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Actual Budget */}
+      <div className="sec-t" style={{ fontSize: 14, fontWeight: 700 }}>Actual Budget</div>
+      <div className="tw" style={{ marginBottom: 14 }}>
+        <table>
+          <thead>
+            <tr>
+              <th style={{ minWidth: 140 }}>Expense</th>
+              <th>Actual Cost</th><th>Expected</th><th>Variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {!costItems.length ? (
+              <tr className="er"><td colSpan={4}>Add expected budget lines first.</td></tr>
+            ) : costItems.map(ci => {
+              const expected = Number(ci.rate) * Number(ci.planned_hours) * Number(ci.multiplier)
+              const actual = Number(ci.actual_cost) || 0
+              const variance = actual - expected
+              return (
+                <tr key={ci.id}>
+                  <td style={{ fontSize: 12 }}>{ci.description || '—'}</td>
+                  <td><InlineInput value={ci.actual_cost ?? ''} onChange={v => onUpdateCostItem(ci.id, { actual_cost: v ? parseFloat(v) : null })} type="number" placeholder="—" /></td>
+                  <td style={{ fontSize: 12, padding: '4px 8px', color: 'var(--tx3)' }}>{fmt$(expected)}</td>
+                  <td style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px', color: actual ? (variance > 0 ? 'var(--rd)' : 'var(--gn)') : 'var(--tx3)' }}>
+                    {actual ? `${variance > 0 ? '+' : ''}${fmt$(variance)}` : '—'}
+                  </td>
+                </tr>
+              )
+            })}
+            {costItems.length > 0 && (
+              <tr style={{ fontWeight: 700, borderTop: '2px solid var(--bd)' }}>
+                <td style={{ textAlign: 'right', padding: '6px 8px', fontSize: 12 }}>TOTAL</td>
+                <td style={{ fontSize: 12, padding: '6px 8px' }}>{fmt$(totalActCost)}</td>
+                <td style={{ fontSize: 12, padding: '6px 8px', color: 'var(--tx3)' }}>{fmt$(totalExpCost)}</td>
+                <td style={{ fontSize: 12, padding: '6px 8px', color: totalActCost ? (totalActCost > totalExpCost ? 'var(--rd)' : 'var(--gn)') : 'var(--tx3)' }}>
+                  {totalActCost ? `${totalActCost > totalExpCost ? '+' : ''}${fmt$(totalActCost - totalExpCost)}` : '—'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── 3. Financials Summary ── */}
+      <div className="sec-t" style={{ fontSize: 14, fontWeight: 700 }}>Financials</div>
+      <div className="sstrip">
+        <div className="sc">
+          <div className="sc-l">CLIENT FEE (excl. VAT)</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 13, color: 'var(--tx3)' }}>₪</span>
+            <input type="number" value={clientFee || ''} onChange={e => onUpdateProject({ client_fee: parseFloat(e.target.value) || 0 } as Partial<Project>)} style={{ fontSize: 20, fontWeight: 700, border: 'none', background: 'transparent', width: 120, padding: 0 }} />
+          </div>
+        </div>
+        <div className="sc">
+          <div className="sc-l">VAT ({vatRate}%)</div>
+          <div className="sc-v">{fmt$(clientFeeInclVat - clientFee)}</div>
+        </div>
+        <div className="sc"><div className="sc-l">INCL. VAT</div><div className="sc-v">{fmt$(clientFeeInclVat)}</div></div>
+        <div className="sc"><div className="sc-l">TOTAL COST (exp.)</div><div className="sc-v">{fmt$(totalExpCost)}</div></div>
+        <div className="sc"><div className="sc-l">EXPECTED PROFIT</div><div className="sc-v" style={{ color: profit >= 0 ? 'var(--gn)' : 'var(--rd)' }}>{fmt$(profit)}</div><div className="sc-s">{margin.toFixed(0)}% margin</div></div>
+        <div className="sc"><div className="sc-l">ACTUAL PROFIT</div><div className="sc-v" style={{ color: totalActCost ? (actualProfit >= 0 ? 'var(--gn)' : 'var(--rd)') : 'var(--tx3)' }}>{totalActCost ? fmt$(actualProfit) : '—'}</div>{totalActCost > 0 && <div className="sc-s">{actualMargin.toFixed(0)}% margin</div>}</div>
+      </div>
+
+      {/* ── 4. Payment Milestones ── */}
+      <div className="sec-t" style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
         Payment Milestones
         <button className="btn bxs" onClick={onAddPayment}>+ Add</button>
       </div>
@@ -369,8 +379,8 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
                 <tr key={pm.id}>
                   <td><InlineInput value={pm.name} onChange={v => onUpdatePayment(pm.id, { name: v })} placeholder="Milestone name" /></td>
                   <td><InlineInput value={pm.percentage} onChange={v => onUpdatePayment(pm.id, { percentage: parseFloat(v) || 0 })} type="number" /></td>
-                  <td style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px' }}>₪{amountExcl.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                  <td style={{ fontSize: 12, padding: '4px 8px' }}>₪{amountIncl.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                  <td style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px' }}>{fmt$(amountExcl)}</td>
+                  <td style={{ fontSize: 12, padding: '4px 8px' }}>{fmt$(amountIncl)}</td>
                   <td>
                     <select value={pm.status} onChange={e => onUpdatePayment(pm.id, { status: e.target.value as PaymentMilestone['status'] })} style={{ fontSize: 11, border: 'none', background: 'transparent', cursor: 'pointer', fontWeight: 600, color: pm.status === 'paid' ? 'var(--gn)' : pm.status === 'invoiced' ? 'var(--am)' : 'var(--tx3)' }}>
                       <option value="pending">Pending</option>
@@ -391,7 +401,7 @@ export function BudgetView({ project, buildings, floors, costItems, payments, on
               <tr style={{ fontWeight: 700, borderTop: '2px solid var(--bd)' }}>
                 <td style={{ textAlign: 'right', padding: '6px 8px', fontSize: 12 }}>TOTAL</td>
                 <td style={{ fontSize: 12, padding: '6px 8px' }}>{payments.reduce((a, p) => a + Number(p.percentage), 0).toFixed(0)}%</td>
-                <td style={{ fontSize: 12, padding: '6px 8px' }}>₪{(clientFee * payments.reduce((a, p) => a + Number(p.percentage), 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                <td style={{ fontSize: 12, padding: '6px 8px' }}>{fmt$(clientFee * payments.reduce((a, p) => a + Number(p.percentage), 0) / 100)}</td>
                 <td colSpan={4}></td>
               </tr>
             )}

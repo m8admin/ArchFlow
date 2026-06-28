@@ -61,6 +61,8 @@ export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, o
 
   const totalPlanned = milestones.reduce((a, m) => a + (m.modeller_hours || 0), 0)
   const totalActual = projectEntries.reduce((a, e) => a + Number(e.hours), 0)
+  const budgetPlannedHours = costItems.reduce((a, ci) => a + (Number(ci.planned_hours) * Number(ci.multiplier)), 0)
+  const budgetPlannedCost = costItems.reduce((a, ci) => a + (Number(ci.rate) * Number(ci.planned_hours) * Number(ci.multiplier)), 0)
 
   function workerName(e: TimeEntry) {
     if (e.worker_type === 'worker') return db.workers.find(w => w.id === e.worker_id)?.name || '?'
@@ -99,9 +101,11 @@ export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, o
         <>
           {/* Hours summary */}
           <div className="sstrip">
-            <div className="sc"><div className="sc-l">PLANNED HOURS</div><div className="sc-v">{totalPlanned || '—'}</div></div>
+            <div className="sc"><div className="sc-l">BUDGET HOURS</div><div className="sc-v">{budgetPlannedHours ? parseFloat(budgetPlannedHours.toFixed(1)) : '—'}</div><div className="sc-s">from budget lines</div></div>
+            <div className="sc"><div className="sc-l">MILESTONE HOURS</div><div className="sc-v">{totalPlanned || '—'}</div><div className="sc-s">from milestones</div></div>
             <div className="sc"><div className="sc-l">ACTUAL HOURS</div><div className="sc-v" style={{ color: 'var(--bl)' }}>{totalActual.toFixed(1)}</div></div>
-            <div className="sc"><div className="sc-l">VARIANCE</div><div className="sc-v" style={{ color: totalPlanned && (totalActual - totalPlanned) > 0 ? 'var(--rd)' : (totalActual - totalPlanned) < 0 ? 'var(--gn)' : 'var(--tx3)' }}>{totalPlanned ? `${(totalActual - totalPlanned) > 0 ? '+' : ''}${(totalActual - totalPlanned).toFixed(1)}h` : '—'}</div></div>
+            <div className="sc"><div className="sc-l">HOURS VARIANCE</div><div className="sc-v" style={{ color: budgetPlannedHours && (totalActual - budgetPlannedHours) > 0 ? 'var(--rd)' : (totalActual - budgetPlannedHours) < 0 ? 'var(--gn)' : 'var(--tx3)' }}>{budgetPlannedHours ? `${(totalActual - budgetPlannedHours) > 0 ? '+' : ''}${(totalActual - budgetPlannedHours).toFixed(1)}h` : '—'}</div></div>
+            <div className="sc"><div className="sc-l">BUDGET COST</div><div className="sc-v">{budgetPlannedCost ? `₪${budgetPlannedCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</div></div>
             <div className="sc"><div className="sc-l">MILESTONES</div><div className="sc-v">{milestones.length}</div></div>
             <div className="sc"><div className="sc-l">TIME ENTRIES</div><div className="sc-v">{projectEntries.length}</div></div>
           </div>

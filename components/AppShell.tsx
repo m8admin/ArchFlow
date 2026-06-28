@@ -290,6 +290,7 @@ export default function AppShell() {
               onEditProject={id => { const p = db.projects.find(x => x.id === id); if (p) setModal({ kind: 'project', project: p }) }}
               onEditTask={id => { const t = db.tasks.find(x => x.id === id); if (t) setModal({ kind: t.kind === 'milestone' ? 'milestone' : 'subtask', task: t }) }}
               onNewProject={() => setModal({ kind: 'project' })}
+              isAdmin={isAdmin} hoursByTask={hoursByTask}
             />
           ) : view === 'subview' ? (
             <SubView

@@ -19,10 +19,13 @@ interface Props {
   onEditProject: (id: string) => void
   onEditTask: (id: string) => void
   onNewProject: () => void
+  isAdmin?: boolean
+  hoursByTask?: Record<string, number>
 }
 
-export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, onEditProject, onEditTask, onNewProject }: Props) {
+export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, onEditProject, onEditTask, onNewProject, isAdmin, hoursByTask }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [showBudget, setShowBudget] = useState(false)
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
 
   const projectsRaw = db.projects.filter(p => !filterClient || p.client_id === filterClient)
@@ -159,6 +162,11 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
         <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 500, padding: '4px 10px', background: 'var(--sf2)', borderRadius: 'var(--r)', border: '1px solid var(--bd)' }}>
           Today: {todayDate.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
         </span>
+        {isAdmin && (
+          <button className={`btn bsm${showBudget ? ' bp' : ''}`} onClick={() => setShowBudget(b => !b)}>
+            {showBudget ? '📊 Budget On' : '📊 Budget'}
+          </button>
+        )}
         <div className="tb-r"><button className="btn bp bsm" onClick={onNewProject}>+ New project</button></div>
       </div>
 
@@ -166,7 +174,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
         <div className="gi">
           {/* Header row */}
           <div className="grow" style={{ background: 'var(--sf2)' }}>
-            <div className="glc hdr">Project / Milestone</div>
+            <div className="glc hdr" style={showBudget ? { width: 360 } : undefined}>{showBudget ? 'Project / Milestone — Hours — Cost' : 'Project / Milestone'}</div>
             <div className="g-hdr-ticks">
               {bands.map((b, i) => (
                 <div key={i} style={{ position: 'absolute', left: `${b.left}%`, width: `${b.width}%`, top: 0, bottom: 0, background: b.even ? 'rgba(0,0,0,.025)' : 'transparent', pointerEvents: 'none' }} />
@@ -186,10 +194,20 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
             const barCol = BAR_COL[p.status]
             return [
               <div key={p.id} className="grow" style={{ background: 'var(--sf)' }}>
-                <div className="glc g-pl" style={{ cursor: 'pointer' }} onClick={() => toggle(p.id)}>
+                <div className="glc g-pl" style={{ cursor: 'pointer', ...(showBudget ? { width: 360 } : {}) }} onClick={() => toggle(p.id)}>
                   <span style={{ marginRight: 4, color: 'var(--tx3)', fontSize: 10 }}>{isCol ? '▶' : '▼'}</span>
                   <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: col, marginRight: 5, verticalAlign: 'middle' }} />
                   {p.name}
+                  {showBudget && (() => {
+                    const pMilestones = p.milestones || []
+                    const plannedH = pMilestones.reduce((a: number, m: { modeller_hours?: number | null }) => a + (m.modeller_hours || 0), 0)
+                    const actualH = pMilestones.reduce((a: number, m: { id: string }) => a + ((hoursByTask || {})[m.id] || 0), 0)
+                    return plannedH || actualH ? (
+                      <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--tx3)' }}>
+                        {actualH.toFixed(1)}/{plannedH}h
+                      </span>
+                    ) : null
+                  })()}
                 </div>
                 <div className="gbc">
                   <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .25, left: `${tL}%`, pointerEvents: 'none' }} />
@@ -211,7 +229,18 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                   const subtasks = db.tasks.filter(t => t.parent_milestone_id === m.id && t.kind === 'task')
                   return [
                     <div key={m.id} className="grow">
-                      <div className="glc g-tl" style={{ fontWeight: 600 }}>↪ {m.phase && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '1px 5px', borderRadius: 8, marginRight: 4 }}>{m.phase}</span>}{m.name}</div>
+                      <div className="glc g-tl" style={{ fontWeight: 600, ...(showBudget ? { width: 360 } : {}) }}>↪ {m.phase && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '1px 5px', borderRadius: 8, marginRight: 4 }}>{m.phase}</span>}{m.name}
+                        {showBudget && (() => {
+                          const planned = m.modeller_hours || 0
+                          const actual = (hoursByTask || {})[m.id] || 0
+                          const over = planned > 0 && actual > planned
+                          return (planned || actual) ? (
+                            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 8, background: over ? 'var(--rd-bg)' : 'var(--gn-bg)', color: over ? 'var(--rd)' : 'var(--gn)' }}>
+                              {actual.toFixed(1)}/{planned}h
+                            </span>
+                          ) : null
+                        })()}
+                      </div>
                       <div className="gbc">
                         <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .2, left: `${tL}%`, pointerEvents: 'none' }} />
                         <div style={{ position: 'relative', width: '100%', height: 15 }}>
@@ -225,7 +254,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                       const stL = pct(st.start_date); const stW = bw(st.start_date, st.end_date); const stBC = BAR_COL[st.status]
                       return (
                         <div key={st.id} className="grow">
-                          <div className="glc g-tl" style={{ paddingLeft: 44, fontSize: 11, color: 'var(--tx3)' }}>
+                          <div className="glc g-tl" style={{ paddingLeft: 44, fontSize: 11, color: 'var(--tx3)', ...(showBudget ? { width: 360 } : {}) }}>
                             <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--bl-tx)', background: 'var(--bl-bg)', padding: '0 4px', borderRadius: 6, marginRight: 4 }}>T</span>
                             {st.name}
                           </div>

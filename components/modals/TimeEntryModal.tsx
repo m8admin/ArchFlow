@@ -25,6 +25,7 @@ export function TimeEntryModal({ open, entry, defaultProjectId, defaultTaskId, p
   const [taskId, setTaskId] = useState('')
   const [workerId, setWorkerId] = useState('')
   const [workerType, setWorkerType] = useState<'worker' | 'contractor'>('worker')
+  const [workType, setWorkType] = useState<'modeller' | 'id_auto'>('modeller')
   const [hours, setHours] = useState('')
   const [date, setDate] = useState(todayStr())
   const [notes, setNotes] = useState('')
@@ -37,13 +38,14 @@ export function TimeEntryModal({ open, entry, defaultProjectId, defaultTaskId, p
       setTaskId(entry.task_id)
       setWorkerId(entry.worker_id)
       setWorkerType(entry.worker_type)
+      setWorkType(entry.work_type || 'modeller')
       setHours(String(entry.hours))
       setDate(entry.date)
       setNotes(entry.notes || '')
     } else {
       setProjectId(defaultProjectId || projects[0]?.id || '')
       setTaskId(defaultTaskId || '')
-      setWorkerId(''); setWorkerType('worker')
+      setWorkerId(''); setWorkerType('worker'); setWorkType('modeller')
       setHours(''); setDate(todayStr()); setNotes('')
     }
   }, [entry, open, defaultProjectId, defaultTaskId, projects, tasks])
@@ -62,6 +64,7 @@ export function TimeEntryModal({ open, entry, defaultProjectId, defaultTaskId, p
       task_id: taskId,
       worker_id: workerId,
       worker_type: workerType,
+      work_type: workType,
       hours: h,
       date,
       notes: notes.trim(),
@@ -122,6 +125,13 @@ export function TimeEntryModal({ open, entry, defaultProjectId, defaultTaskId, p
             {workers.map(w => <option key={w.id} value={`worker:${w.id}`}>{w.name}</option>)}
             {contractors.length > 0 && <option disabled>── Subcontractors ──</option>}
             {contractors.map(c => <option key={c.id} value={`contractor:${c.id}`}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="fr">
+          <label>Work type *</label>
+          <select value={workType} onChange={e => setWorkType(e.target.value as 'modeller' | 'id_auto')}>
+            <option value="modeller">Modeller</option>
+            <option value="id_auto">ID-Auto (Coordinator)</option>
           </select>
         </div>
         <div className="fr">

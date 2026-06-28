@@ -12,6 +12,8 @@ interface Props {
   projectId: string
   entries: TimeEntry[]
   hoursByTask: Record<string, number>
+  modellerHoursByTask: Record<string, number>
+  idAutoHoursByTask: Record<string, number>
   onBack: () => void
   onLogTime: (taskId?: string) => void
   onEditEntry: (entry: TimeEntry) => void
@@ -43,7 +45,7 @@ interface Props {
   }) => Promise<void>
 }
 
-export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, onLogTime, onEditEntry, onEditMilestone, buildings, floors, costItems, payments, onUpdateProject, onAddBuilding, onUpdateBuilding, onDeleteBuilding, onAddFloor, onUpdateFloor, onDeleteFloor, onAddCostItem, onUpdateCostItem, onDeleteCostItem, onAddPayment, onUpdatePayment, onDeletePayment, onImportScope }: Props) {
+export function ProjectMgmtView({ db, projectId, entries, hoursByTask, modellerHoursByTask, idAutoHoursByTask, onBack, onLogTime, onEditEntry, onEditMilestone, buildings, floors, costItems, payments, onUpdateProject, onAddBuilding, onUpdateBuilding, onDeleteBuilding, onAddFloor, onUpdateFloor, onDeleteFloor, onAddCostItem, onUpdateCostItem, onDeleteCostItem, onAddPayment, onUpdatePayment, onDeletePayment, onImportScope }: Props) {
   const [tab, setTab] = useState<'time' | 'budget'>('time')
   const project = db.projects.find(p => p.id === projectId)
   if (!project) return <div className="ems">Project not found.</div>
@@ -61,7 +63,9 @@ export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, o
 
   const totalPlanned = milestones.reduce((a, m) => a + (m.modeller_hours || 0), 0)
   const totalIdAuto = milestones.reduce((a, m) => a + (m.id_auto_hours || 0), 0)
-  const totalActual = projectEntries.reduce((a, e) => a + Number(e.hours), 0)
+  const totalActualModeller = projectEntries.filter(e => (e.work_type || 'modeller') === 'modeller').reduce((a, e) => a + Number(e.hours), 0)
+  const totalActualIdAuto = projectEntries.filter(e => e.work_type === 'id_auto').reduce((a, e) => a + Number(e.hours), 0)
+  const totalActual = totalActualModeller + totalActualIdAuto
   const budgetPlannedHours = costItems.reduce((a, ci) => a + (Number(ci.planned_hours) * Number(ci.multiplier)), 0)
   const budgetPlannedCost = costItems.reduce((a, ci) => a + (Number(ci.rate) * Number(ci.planned_hours) * Number(ci.multiplier)), 0)
 
@@ -106,9 +110,9 @@ export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, o
           {/* Hours summary */}
           <div className="sstrip">
             <div className="sc"><div className="sc-l">BUDGET HOURS</div><div className="sc-v">{budgetPlannedHours ? parseFloat(budgetPlannedHours.toFixed(1)) : '—'}</div><div className="sc-s">from budget lines</div></div>
-            <div className="sc"><div className="sc-l">MODELLER HOURS</div><div className="sc-v">{totalPlanned || '—'}</div><div className="sc-s">from milestones</div></div>
-            <div className="sc"><div className="sc-l">ID-AUTO HOURS</div><div className="sc-v">{totalIdAuto || '—'}</div><div className="sc-s">coordinator</div></div>
-            <div className="sc"><div className="sc-l">ACTUAL HOURS</div><div className="sc-v" style={{ color: 'var(--bl)' }}>{totalActual.toFixed(1)}</div></div>
+            <div className="sc"><div className="sc-l">MODELLER (exp/act)</div><div className="sc-v">{totalPlanned || '—'} / <span style={{ color: totalActualModeller > totalPlanned && totalPlanned ? 'var(--rd)' : 'var(--gn)' }}>{totalActualModeller.toFixed(1)}</span></div></div>
+            <div className="sc"><div className="sc-l">ID-AUTO (exp/act)</div><div className="sc-v">{totalIdAuto || '—'} / <span style={{ color: totalActualIdAuto > totalIdAuto && totalIdAuto ? 'var(--rd)' : 'var(--gn)' }}>{totalActualIdAuto.toFixed(1)}</span></div></div>
+            <div className="sc"><div className="sc-l">TOTAL ACTUAL</div><div className="sc-v" style={{ color: 'var(--bl)' }}>{totalActual.toFixed(1)}</div></div>
             <div className="sc"><div className="sc-l">HOURS VARIANCE</div><div className="sc-v" style={{ color: budgetPlannedHours && (totalActual - budgetPlannedHours) > 0 ? 'var(--rd)' : (totalActual - budgetPlannedHours) < 0 ? 'var(--gn)' : 'var(--tx3)' }}>{budgetPlannedHours ? `${(totalActual - budgetPlannedHours) > 0 ? '+' : ''}${(totalActual - budgetPlannedHours).toFixed(1)}h` : '—'}</div></div>
             <div className="sc"><div className="sc-l">BUDGET COST</div><div className="sc-v">{budgetPlannedCost ? `₪${budgetPlannedCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</div></div>
             <div className="sc"><div className="sc-l">MILESTONES</div><div className="sc-v">{milestones.length}</div></div>
@@ -120,28 +124,39 @@ export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, o
           <div className="tw" style={{ marginBottom: 18 }}>
             <table>
               <thead>
-                <tr><th>Milestone</th><th>Status</th><th>Progress</th><th>Modeller hrs</th><th>ID-Auto hrs</th><th>Actual</th><th>Variance</th><th style={{ minWidth: 120 }}></th><th style={{ width: 80 }}></th></tr>
+                <tr><th>Milestone</th><th>Status</th><th>Progress</th><th>Modeller (exp/act)</th><th>ID-Auto (exp/act)</th><th>Total Variance</th><th style={{ minWidth: 120 }}></th><th style={{ width: 80 }}></th></tr>
               </thead>
               <tbody>
                 {!milestones.length ? (
-                  <tr className="er"><td colSpan={9}>No milestones yet.</td></tr>
+                  <tr className="er"><td colSpan={8}>No milestones yet.</td></tr>
                 ) : milestones.map(m => {
-                  const modellerH = m.modeller_hours || 0
-                  const idAutoH = m.id_auto_hours || 0
-                  const totalPlannedM = modellerH + idAutoH
-                  const actual = hoursByTask[m.id] || 0
-                  const variance = actual - totalPlannedM
-                  const pct = totalPlannedM > 0 ? Math.min(100, (actual / totalPlannedM) * 100) : 0
-                  const over = totalPlannedM > 0 && actual > totalPlannedM
+                  const mExp = m.modeller_hours || 0
+                  const mAct = modellerHoursByTask[m.id] || 0
+                  const idExp = m.id_auto_hours || 0
+                  const idAct = idAutoHoursByTask[m.id] || 0
+                  const totalExp = mExp + idExp
+                  const totalAct = mAct + idAct
+                  const variance = totalAct - totalExp
+                  const pct = totalExp > 0 ? Math.min(100, (totalAct / totalExp) * 100) : 0
+                  const over = totalExp > 0 && totalAct > totalExp
+                  const mOver = mExp > 0 && mAct > mExp
+                  const idOver = idExp > 0 && idAct > idExp
                   return (
                     <tr key={m.id} className="pr">
                       <td style={{ fontWeight: 500 }}>{m.phase && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--pu)', background: 'var(--pu-bg)', padding: '2px 8px', borderRadius: 12, marginRight: 6 }}>{m.phase}</span>}<span className="pnc" onClick={() => onEditMilestone(m.id)}>{m.name}</span></td>
                       <td><Badge status={m.status} /></td>
                       <td><ProgressBar status={m.status} pct={m.pct} /></td>
-                      <td style={{ fontSize: 12 }}>{modellerH ? `${modellerH}h` : '—'}</td>
-                      <td style={{ fontSize: 12 }}>{idAutoH ? `${idAutoH}h` : '—'}</td>
-                      <td style={{ fontSize: 12, fontWeight: 600 }}>{actual.toFixed(1)}h</td>
-                      <td style={{ fontSize: 12, fontWeight: 600, color: over ? 'var(--rd)' : variance < 0 ? 'var(--gn)' : 'var(--tx3)' }}>{totalPlannedM ? `${variance > 0 ? '+' : ''}${variance.toFixed(1)}h` : '—'}</td>
+                      <td style={{ fontSize: 12 }}>
+                        <span style={{ color: 'var(--tx3)' }}>{mExp || '—'}h</span>
+                        <span style={{ margin: '0 3px', color: 'var(--tx3)' }}>/</span>
+                        <span style={{ fontWeight: 600, color: mOver ? 'var(--rd)' : mAct ? 'var(--gn)' : 'var(--tx3)' }}>{mAct.toFixed(1)}h</span>
+                      </td>
+                      <td style={{ fontSize: 12 }}>
+                        <span style={{ color: 'var(--tx3)' }}>{idExp || '—'}h</span>
+                        <span style={{ margin: '0 3px', color: 'var(--tx3)' }}>/</span>
+                        <span style={{ fontWeight: 600, color: idOver ? 'var(--rd)' : idAct ? 'var(--gn)' : 'var(--tx3)' }}>{idAct.toFixed(1)}h</span>
+                      </td>
+                      <td style={{ fontSize: 12, fontWeight: 600, color: over ? 'var(--rd)' : variance < 0 ? 'var(--gn)' : 'var(--tx3)' }}>{totalExp ? `${variance > 0 ? '+' : ''}${variance.toFixed(1)}h` : '—'}</td>
                       <td><div style={{ background: 'var(--sf2)', height: 8, borderRadius: 20, overflow: 'hidden' }}><div style={{ height: '100%', width: `${pct}%`, borderRadius: 20, background: over ? 'var(--rd)' : 'var(--bl)' }} /></div></td>
                       <td><button className="btn bxs" onClick={() => onLogTime(m.id)}>+ Log</button></td>
                     </tr>

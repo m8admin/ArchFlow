@@ -27,6 +27,7 @@ export function useTimeEntries(enabled: boolean) {
       task_id: data.task_id,
       worker_id: data.worker_id,
       worker_type: data.worker_type,
+      work_type: data.work_type || 'modeller',
       hours: data.hours,
       date: data.date,
       notes: data.notes,
@@ -48,9 +49,16 @@ export function useTimeEntries(enabled: boolean) {
 
   // Aggregate hours by task_id
   const hoursByTask: Record<string, number> = {}
+  const modellerHoursByTask: Record<string, number> = {}
+  const idAutoHoursByTask: Record<string, number> = {}
   entries.forEach(e => {
     hoursByTask[e.task_id] = (hoursByTask[e.task_id] || 0) + Number(e.hours)
+    if (e.work_type === 'id_auto') {
+      idAutoHoursByTask[e.task_id] = (idAutoHoursByTask[e.task_id] || 0) + Number(e.hours)
+    } else {
+      modellerHoursByTask[e.task_id] = (modellerHoursByTask[e.task_id] || 0) + Number(e.hours)
+    }
   })
 
-  return { entries, loading, saveEntry, deleteEntry, fetchEntries, hoursByTask }
+  return { entries, loading, saveEntry, deleteEntry, fetchEntries, hoursByTask, modellerHoursByTask, idAutoHoursByTask }
 }

@@ -40,7 +40,7 @@ type ModalState =
 export default function AppShell() {
   const { db, loading, saveProject, deleteProject, saveTask, deleteTask, saveDirEntry, deleteDirEntry, fetchAll } = useAppData()
   const { isAdmin, loading: profileLoading } = useUserProfile()
-  const { entries: timeEntries, saveEntry: saveTimeEntry, deleteEntry: deleteTimeEntry, hoursByTask } = useTimeEntries(isAdmin)
+  const { entries: timeEntries, saveEntry: saveTimeEntry, deleteEntry: deleteTimeEntry, hoursByTask, modellerHoursByTask, idAutoHoursByTask } = useTimeEntries(isAdmin)
   const { toasts, toast } = useToast()
   const supabase = createClient()
 
@@ -306,7 +306,7 @@ export default function AppShell() {
             <DirectoryView db={db} type="worker" onOpenProfile={(t, id) => setProfile({ type: t, id })} onAddEntry={() => setModal({ kind: 'dir', type: 'worker' })} />
           ) : view === 'timetracking' && isAdmin && mgmtProjectId ? (
             <ProjectMgmtView
-              db={db} projectId={mgmtProjectId} entries={timeEntries} hoursByTask={hoursByTask}
+              db={db} projectId={mgmtProjectId} entries={timeEntries} hoursByTask={hoursByTask} modellerHoursByTask={modellerHoursByTask} idAutoHoursByTask={idAutoHoursByTask}
               onBack={() => setMgmtProjectId(null)}
               onLogTime={(taskId) => setModal({ kind: 'timeentry', defaultProjectId: mgmtProjectId || undefined, defaultTaskId: taskId || undefined })}
               onEditEntry={entry => setModal({ kind: 'timeentry', entry })}

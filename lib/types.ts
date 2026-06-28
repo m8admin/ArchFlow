@@ -162,6 +162,7 @@ export interface TimeEntry {
   task_id: string
   worker_id: string
   worker_type: 'worker' | 'contractor'
+  work_type: 'modeller' | 'id_auto'
   hours: number
   date: string
   notes: string

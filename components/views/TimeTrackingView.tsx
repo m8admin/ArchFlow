@@ -51,7 +51,7 @@ export function TimeTrackingView({ db, entries, hoursByTask, onNewEntry, onEditE
     const task = db.tasks.find(t => t.id === e.task_id)
     if (!task) return { taskName: '?', projectName: '?' }
     const project = db.projects.find(p => p.id === task.project_id)
-    return { taskName: task.name, projectName: project?.name || '?', kind: task.kind, phase: task.phase }
+    return { taskName: task.name, projectName: project?.name || '?', kind: task.kind, phase: task.phase, workType: '' }
   }
 
   // Planned vs Actual report
@@ -103,7 +103,7 @@ export function TimeTrackingView({ db, entries, hoursByTask, onNewEntry, onEditE
               <th>Date</th>
               <th>Project</th>
               <th>Milestone / Task</th>
-              <th>Worker</th>
+              <th>Worker</th><th>Type</th>
               <th>Hours</th>
               <th>Notes</th>
               <th style={{ width: 44 }}></th>
@@ -111,7 +111,7 @@ export function TimeTrackingView({ db, entries, hoursByTask, onNewEntry, onEditE
           </thead>
           <tbody>
             {!filtered.length ? (
-              <tr className="er"><td colSpan={7}>No time entries{filterProject || filterWorker ? ' match filters' : ''} — <button className="btn bsm" onClick={onNewEntry}>+ Log time</button></td></tr>
+              <tr className="er"><td colSpan={8}>No time entries{filterProject || filterWorker ? ' match filters' : ''} — <button className="btn bsm" onClick={onNewEntry}>+ Log time</button></td></tr>
             ) : filtered.map(e => {
               const { taskName, projectName, kind, phase } = taskInfo(e)
               return (
@@ -124,6 +124,7 @@ export function TimeTrackingView({ db, entries, hoursByTask, onNewEntry, onEditE
                     {taskName}
                   </td>
                   <td style={{ fontSize: 12 }}>{workerName(e)}</td>
+                  <td><span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 8, background: e.work_type === 'id_auto' ? 'var(--am-bg)' : 'var(--bl-bg)', color: e.work_type === 'id_auto' ? 'var(--am)' : 'var(--bl-tx)' }}>{e.work_type === 'id_auto' ? 'ID-Auto' : 'Modeller'}</span></td>
                   <td style={{ fontSize: 12, fontWeight: 600 }}>{Number(e.hours).toFixed(1)}</td>
                   <td style={{ fontSize: 12, color: 'var(--tx2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.notes || '—'}</td>
                   <td><button className="bi" onClick={ev => { ev.stopPropagation(); onEditEntry(e) }}>✎</button></td>

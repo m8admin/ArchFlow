@@ -46,6 +46,7 @@ export interface Task {
   modeller_contractor_ids: string[]
   parent_milestone_id: string | null
   modeller_hours: number | null
+  id_auto_hours: number | null
   pinpoints: SubTask[]
 }
 

@@ -60,6 +60,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
   const [modellerWorkerIds, setModellerWorkerIds] = useState<string[]>([])
   const [modellerContractorIds, setModellerContractorIds] = useState<string[]>([])
   const [modellerHours, setModellerHours] = useState('')
+  const [idAutoHours, setIdAutoHours] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
       setModellerWorkerIds(task.modeller_worker_ids || [])
       setModellerContractorIds(task.modeller_contractor_ids || [])
       setModellerHours(task.modeller_hours ? String(task.modeller_hours) : '')
+      setIdAutoHours(task.id_auto_hours ? String(task.id_auto_hours) : '')
     } else {
       setName(''); setPhase(''); setProjectId(defaultProjectId || projects[0]?.id || '')
       setParentMilestoneId(defaultMilestoneId || '')
@@ -82,7 +84,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
       setPinpoints([{ text: '', done: false }])
       setCoordinatorId(''); setCoordinatorType('worker')
       setModellerWorkerIds([]); setModellerContractorIds([])
-      setModellerHours('')
+      setModellerHours(''); setIdAutoHours('')
     }
   }, [task, open, defaultProjectId, defaultMilestoneId, projects])
 
@@ -106,6 +108,7 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
       modeller_worker_ids: modellerWorkerIds,
       modeller_contractor_ids: modellerContractorIds,
       modeller_hours: isMilestone && modellerHours ? parseFloat(modellerHours) : null,
+      id_auto_hours: isMilestone && idAutoHours ? parseFloat(idAutoHours) : null,
     })
     setSaving(false)
   }
@@ -172,6 +175,12 @@ export function TaskModal({ open, task, mode, defaultProjectId, defaultMilestone
           <div className="fr ff">
             <label>Total modeller hours</label>
             <input type="number" min={0} step="0.5" value={modellerHours} onChange={e => setModellerHours(e.target.value)} placeholder="e.g. 120" />
+          </div>
+        )}
+        {isMilestone && isAdmin && (
+          <div className="fr">
+            <label>ID-Auto hours (coordinator)</label>
+            <input type="number" min={0} step="0.5" value={idAutoHours} onChange={e => setIdAutoHours(e.target.value)} placeholder="e.g. 16" />
           </div>
         )}
 

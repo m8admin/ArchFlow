@@ -84,10 +84,13 @@ export function ProjectMgmtView({ db, projectId, entries, hoursByTask, onBack, o
         <div style={{ flex: 1 }}>
           <div className="p-name">{project.name}</div>
           <div className="p-role">{client?.name || '?'} {project.city ? `· ${project.city}` : ''}</div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
             <Badge status={agg.status} />
             <span style={{ fontSize: 12, color: 'var(--tx3)' }}>{agg.pct}% complete</span>
             {agg.start && <span style={{ fontSize: 12, color: 'var(--tx3)' }}>{fmtFull(agg.start)} → {fmtFull(agg.end)}</span>}
+            {project.budget_sheet_url && (
+              <a href={project.budget_sheet_url} target="_blank" rel="noopener noreferrer" className="btn bxs" style={{ fontSize: 11, textDecoration: 'none' }}>📊 Budget Sheet ↗</a>
+            )}
           </div>
         </div>
       </div>

@@ -12,9 +12,10 @@ interface Props {
   onDelete?: (id: string) => Promise<void>
   onClose: () => void
   toast: (msg: string) => void
+  isAdmin?: boolean
 }
 
-export function ProjectModal({ open, project, clients, onSave, onDelete, onClose, toast }: Props) {
+export function ProjectModal({ open, project, clients, onSave, onDelete, onClose, toast, isAdmin }: Props) {
   const [name, setName] = useState('')
   const [clientId, setClientId] = useState('')
   const [newClient, setNewClient] = useState('')
@@ -30,6 +31,7 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
   const [address, setAddress] = useState('')
   const [drawingsPlatform, setDrawingsPlatform] = useState('')
   const [notes, setNotes] = useState('')
+  const [budgetSheetUrl, setBudgetSheetUrl] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -49,11 +51,12 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       setAddress(project.address || '')
       setDrawingsPlatform(project.drawings_platform || '')
       setNotes(project.notes || '')
+      setBudgetSheetUrl(project.budget_sheet_url || '')
     } else {
       setName(''); setClientId(clients[0]?.id || ''); setNewClient('')
       setSqm(''); setFloors(''); setBuildings(''); setUses(''); setDeveloper('')
       setArchitect(''); setBimManager(''); setRevitVersion('')
-      setCity(''); setAddress(''); setDrawingsPlatform(''); setNotes('')
+      setCity(''); setAddress(''); setDrawingsPlatform(''); setNotes(''); setBudgetSheetUrl('')
     }
   }, [project, open, clients])
 
@@ -74,6 +77,7 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
       revit_version: revitVersion.trim(),
       city: city.trim(), address: address.trim(),
       drawings_platform: drawingsPlatform.trim(), notes: notes.trim(),
+      budget_sheet_url: budgetSheetUrl.trim(),
     })
     setSaving(false)
   }
@@ -154,6 +158,12 @@ export function ProjectModal({ open, project, clients, onSave, onDelete, onClose
           <label>Notes</label>
           <textarea rows={2} style={{ width: '100%', resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
+        {isAdmin && (
+          <div className="fr ff">
+            <label>Budget Google Sheet URL</label>
+            <input value={budgetSheetUrl} onChange={e => setBudgetSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." />
+          </div>
+        )}
       </div>
       <div className="fa">
         <div>

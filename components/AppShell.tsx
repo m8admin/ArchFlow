@@ -338,6 +338,7 @@ export default function AppShell() {
           clients={db.clients}
           onSave={handleSaveProject}
           onDelete={handleDeleteProject}
+          isAdmin={isAdmin}
           onClose={() => setModal({ kind: 'none' })}
           toast={toast}
         />

@@ -27,6 +27,7 @@ export interface Project {
   drawings_platform: string
   client_fee: number
   vat_rate: number
+  budget_sheet_url: string
 }
 
 export interface Task {

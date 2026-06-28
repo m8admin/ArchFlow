@@ -50,6 +50,7 @@ export function useAppData() {
       drawings_platform: data.drawings_platform,
       client_fee: data.client_fee,
       vat_rate: data.vat_rate,
+      budget_sheet_url: data.budget_sheet_url,
     }
     if (data.id) {
       const { error } = await supabase.from('projects').update(payload).eq('id', data.id)

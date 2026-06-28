@@ -182,7 +182,9 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
               {ticks.map((tk, i) => (
                 <div key={i} style={{ position: 'absolute', left: `${tk.left}%`, fontSize: 10, color: 'var(--tx3)', paddingTop: 5, borderLeft: '1px solid var(--bd)', paddingLeft: 3, whiteSpace: 'nowrap' }}>{tk.label}</div>
               ))}
-              <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .5, left: `${tL}%` }} />
+              <div style={{ position: 'absolute', top: 0, bottom: 0, width: 3, background: 'var(--rd)', left: `${tL}%`, zIndex: 1 }}>
+                <div style={{ position: 'absolute', top: -2, left: -14, fontSize: 9, fontWeight: 700, color: '#fff', background: 'var(--rd)', padding: '1px 4px', borderRadius: 3, whiteSpace: 'nowrap' }}>Today</div>
+              </div>
             </div>
           </div>
 
@@ -210,7 +212,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                   })()}
                 </div>
                 <div className="gbc">
-                  <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .25, left: `${tL}%`, pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .5, left: `${tL}%`, pointerEvents: 'none' }} />
                   <div style={{ position: 'relative', width: '100%', height: 22 }}>
                     <div
                       style={{ position: 'absolute', left: `${bL}%`, width: `${bW}%`, height: 22, background: barCol, borderRadius: 5, cursor: 'pointer', minWidth: 5, overflow: 'hidden' }}
@@ -242,7 +244,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                         })()}
                       </div>
                       <div className="gbc">
-                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .2, left: `${tL}%`, pointerEvents: 'none' }} />
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .5, left: `${tL}%`, pointerEvents: 'none' }} />
                         <div style={{ position: 'relative', width: '100%', height: 15 }}>
                           <div style={{ position: 'absolute', left: `${mL}%`, width: `${mW}%`, height: 15, background: mBC, borderRadius: 4, opacity: .85, cursor: 'pointer', minWidth: 4, overflow: 'hidden' }} onClick={() => onEditTask(m.id)}>
                             <div style={{ height: '100%', width: `${m.pct}%`, background: 'rgba(255,255,255,.3)', borderRadius: '4px 0 0 4px' }} />
@@ -259,7 +261,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                             {st.name}
                           </div>
                           <div className="gbc">
-                            <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .15, left: `${tL}%`, pointerEvents: 'none' }} />
+                            <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .5, left: `${tL}%`, pointerEvents: 'none' }} />
                             <div style={{ position: 'relative', width: '100%', height: 10 }}>
                               <div style={{ position: 'absolute', left: `${stL}%`, width: `${stW}%`, height: 10, background: stBC, borderRadius: 3, opacity: .7, cursor: 'pointer', minWidth: 3, overflow: 'hidden' }} onClick={() => onEditTask(st.id)}>
                                 <div style={{ height: '100%', width: `${st.pct}%`, background: 'rgba(255,255,255,.3)', borderRadius: '3px 0 0 3px' }} />
@@ -281,7 +283,7 @@ export function GanttView({ db, filterClient, zoom, setZoom, setFilterClient, on
                         {st.name}
                       </div>
                       <div className="gbc">
-                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .15, left: `${tL}%`, pointerEvents: 'none' }} />
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: 'var(--rd)', opacity: .5, left: `${tL}%`, pointerEvents: 'none' }} />
                         <div style={{ position: 'relative', width: '100%', height: 10 }}>
                           <div style={{ position: 'absolute', left: `${stL}%`, width: `${stW}%`, height: 10, background: stBC, borderRadius: 3, opacity: .7, cursor: 'pointer', minWidth: 3, overflow: 'hidden' }} onClick={() => onEditTask(st.id)}>
                             <div style={{ height: '100%', width: `${st.pct}%`, background: 'rgba(255,255,255,.3)', borderRadius: '3px 0 0 3px' }} />
